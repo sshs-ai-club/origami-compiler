@@ -35,11 +35,11 @@ user-uploaded models.
 
 | Folder | Owner | Contract |
 |---|---|---|
-| `engine/` | folded state, layer order, foldability checks |
-| `sequencer/` | search over fold sequences |
-| `diagrams/` | crease pattern + fold -> SVG |
-| `app/` | FOLD import, UI, step text, print/export |
-| `data/` | FOLD test files + expected results |
+| `engine/` | | folded state, layer order, foldability checks |
+| `sequencer/` | | search over fold sequences |
+| `diagrams/` | | crease pattern + fold -> SVG |
+| `app/` | | FOLD import, UI, step text, print/export |
+| `data/` | | FOLD test files + expected results |
 
 See `docs/SPEC.md` for more detail, `docs/decisions.md` for why we
 chose things the way we did.
