@@ -1,0 +1,24 @@
+# key	priority	source	id_or_url	title	why
+hull-survey	1	arxiv	1307.1065	The Combinatorics of Flat Folds: a Survey	Best entry point. Read first. MATH.md level 1.
+flatfolder-2024	1	demaine	FlatFolder_OSME2024	Computing Flat-Folded States	THE paper engine/ implements. Facewise layer-order conditions.
+simplefolds-hard	1	demaine	SimpleFolds_JIP	Simple Folding is Really Hard	Why sequencer/ is a heuristic. Strong NP-completeness at 45 degrees.
+learn2fold	1	arxiv	2603.29585	Learn2Fold: Structured Origami Generation with World Model Planning	Closest prior art to our back half. LLM propose + symbolic verify.
+akitaya-mitani-2013	1	url	https://src.acm.org/binaries/content/assets/src/2013/hugoakitaya.pdf	Generating Folding Sequences from Crease Patterns of Flat-Foldable Origami	The only prior sequencing attempt. SIGGRAPH 2013 poster.
+corigami	2	arxiv	2606.26299	COrigami: An AI Pipeline for Co-Designing Flat-Foldable Visually Recognisable Origami	Closest prior art to our front half. DeepMind, text to CP.
+origamizer	2	demaine	Origamizer_SoCG2017	Origamizer: A Practical Algorithm for Folding Any Polyhedron	Plan C. Tucking molecules, Voronoi construction.
+origami-sim-gpu	2	url	https://amandaghassaei.com/projects/origami_simulator/files/FastInteractiveOrigamiSimGPU.pdf	Fast, Interactive Origami Simulation using GPU Computation	Our validation dependency. How the compliant solver works.
+tachi-rigid-sim	2	url	https://origami.c.u-tokyo.ac.jp/~tachi/cg/SimulationOfRigidOrigami_tachi_4OSME.pdf	Simulation of Rigid Origami	Configuration-space projection method. motion/ background.
+rigid-hard	2	arxiv	1812.01160	Rigid Foldability is NP-Hard	Hardness of the 3D/rigid regime. Different source than flat folding.
+origamibench	2	arxiv	2603.13856	OrigamiBench: An Interactive Environment to Synthesize Flat-Foldable Origamis	Evidence that VLMs cannot do the geometry. Justifies the symbolic kernel.
+foldingagent	2	arxiv	2609.00377	FoldingAgent: Inferring Parametric Origami Procedures from Demonstration Videos	Video to program. A route to bootstrapping the corpus.
+silhouettes-1999	3	demaine	CGTA2000	Folding Flat Silhouettes and Wrapping Polyhedral Packages	Universality results. Historical grounding for Plan C.
+complexity-survey	3	arxiv	2410.07666	Computational Complexities of Folding	Survey of hardness results across folding problems.
+param-flatfold	3	arxiv	2306.11939	A Parameterized Algorithm for Flat Folding	Parameterized approach; possible alternative to plain SAT.
+mixed-orthogonal	3	arxiv	2306.00702	Complexity of Simple Folding of Mixed Orthogonal Crease Patterns	Where the tractability boundary sits. Informs our restriction choice.
+circle-packing-hard	3	arxiv	1008.1224	Circle Packing for Origami Design Is Hard	Why design/ uses a grid restriction.
+rigid-origami-design	3	arxiv	2211.13219	Automating Rigid Origami Design	IJCAI 2023. Design as discrete optimization. Has code.
+gamibench	3	arxiv	2512.22207	GamiBench: Evaluating Spatial Reasoning and 2D-to-3D Planning of MLLMs	Benchmark data. Code at github.com/stvngo/GamiBench
+origamispace	3	arxiv	2511.18450	ORIGAMISPACE: Benchmarking Multimodal LLMs in Multi-Step Spatial Reasoning	NeurIPS 2025. 350 CP + folding process + folded image instances.
+turing-complete	4	arxiv	2309.07932	Flat Origami is Turing Complete	Curiosity. Shows how expressive flat folding is.
+random-flatfold	4	arxiv	2502.04279	On random locally flat-foldable origami	Statistical side. MATH.md 5.5.
+spin-model	4	arxiv	2403.07306	A Spin model for global flat-foldability of random origami	Origami statistical mechanics. MATH.md 5.5.

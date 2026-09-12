@@ -79,16 +79,24 @@ the library's public API serialised to disk.
 
 The deciding fact: **every tool we want to reuse is JavaScript.**
 
-| Tool | Language |
-|---|---|
-| [Rabbit Ear](https://rabbitear.org/) — FOLD manipulation, geometry, SVG | JS |
-| [flat-folder](https://github.com/origamimagiro/flat-folder) — layer-order solving | JS |
-| [Origami Simulator](https://origamisimulator.org/) — physical validation | JS / WebGL |
-| [FOLD](https://github.com/edemaine/fold) reference tooling | JS |
+| Tool | Language | Licence |
+|---|---|---|
+| [flat-folder](https://github.com/origamimagiro/flat-folder) — layer-order solving | JS | MIT |
+| [Origami Simulator](https://origamisimulator.org/) — physical validation | JS / WebGL | MIT |
+| [FOLD](https://github.com/edemaine/fold) reference tooling | JS | MIT |
+| [Rabbit Ear](https://rabbitear.org/) — FOLD manipulation, geometry, SVG | JS | **GPLv3 ⚠️** |
 
 If the core were Python we would either port `flat-folder` — which implements
 a research paper and would cost weeks we do not have — or shell out to Node
 anyway and pay the serialisation cost at every call.
+
+> ⚠️ **Correction (2026-09-12).** An earlier version of this document named
+> Rabbit Ear as the core substrate. **Rabbit Ear is GPLv3**, which is
+> incompatible with our MIT licence: linking it would force the whole project
+> to GPLv3. `flat-folder` — the piece we actually need — is MIT. See
+> **DEPENDENCIES.md §1** for the three options and the recommendation, and
+> settle it before writing code. The JavaScript argument above is unaffected:
+> the three MIT tools are all JS.
 
 **Second benefit: no backend.** A TypeScript core runs unmodified in the
 browser. The entire product deploys as a **static site** — no server, no

@@ -88,13 +88,19 @@ step text. The whole v1 runs on a laptop. See STACK.md.
 | [docs/PLANS.md](docs/PLANS.md) | Four routes, rated by mathematical depth and risk |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Milestones M0–M6 with exit tests |
 | [docs/OWNERSHIP.md](docs/OWNERSHIP.md) | Who owns what, and the seam between them |
+| [docs/START.md](docs/START.md) | **Where to begin** — the first month, step by step |
+| [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) | What we reuse, what we build, and the GPL trap |
+| [docs/FOLDTESTS.md](docs/FOLDTESTS.md) | What to fold by hand, and what to record |
 | [docs/MATH.md](docs/MATH.md) | Study ladder, and the open problems we could actually settle |
 | [docs/STACK.md](docs/STACK.md) | TypeScript core, no GPUs, library + thin shells |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | **Read this first** if you're new — the vocabulary is treacherous |
 | [docs/decisions.md](docs/decisions.md) | Running log of why we chose things |
 
-**New to the project?** GLOSSARY.md, then GOAL.md, then your own module's
-README. "Flat-foldable" in particular does not mean what it sounds like.
+**New to the project?** GLOSSARY.md, then GOAL.md, then START.md, then your
+own module's README. "Flat-foldable" in particular does not mean what it
+sounds like.
+
+**Papers:** `./papers/fetch.sh 1` downloads the five essential ones.
 
 ## The plan in one line
 

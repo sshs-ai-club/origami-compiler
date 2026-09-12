@@ -37,9 +37,44 @@ unreadable to non-experts.
 layer order)*. Two models can have identical face positions and different
 layer orders, and only one of them may be physically achievable.
 
+**Layer** — When paper is folded flat, several different parts of the
+original sheet end up occupying the *same spot* in the plane. Each part that
+lands on that spot is a **layer** at that point. Fold a strip in half and
+there are two layers; fold again and there are four.
+
 **Layer order** — Which face is on top of which, for every pair of
-overlapping faces. **This is where the computational difficulty lives** —
-Bern & Hayes' NP-hardness comes from layer assignment, not from angles.
+overlapping faces.
+
+The crucial fact: **geometry does not determine layer order.** Fold a strip
+of 4 segments flat and all four land in the same footprint — but the stack
+could read 1-2-3-4 bottom-to-top, or 1-4-3-2, or others, and *some orders are
+physically impossible* because the paper joining the segments would have to
+pass through itself. (Counting the achievable ones is the classic *stamp
+folding* problem.) So a folded state is always two things:
+
+```
+FoldedState = ( where each face is  +  which face is on top of which )
+                    geometry                   layer order
+```
+
+**This is where the computational difficulty lives** — Bern & Hayes'
+NP-hardness comes from layer assignment, not from angles.
+
+The physical constraint "paper cannot pass through paper" turns into four
+families of condition on the ordering, named as in `flat-folder` and the
+Akitaya–Demaine–Ku formulation:
+
+- **taco–taco** — two folded edges whose regions overlap must nest
+  consistently, not interleave
+- **taco–tortilla** — a flat face crossing a folded edge must be entirely
+  above or entirely below it; it cannot slip inside the fold
+- **tortilla–tortilla** — consistency between two overlapping flat pairs
+- **transitivity** — if A is above B and B above C, then A is above C
+
+These become boolean variables `x[A,B]` = "A is above B" plus clauses, handed
+to a SAT solver. Three modules depend on the answer: `engine/` for validity,
+`diagrams/` for hidden-line removal, and `sequencer/` because "fold the top
+layer only" and "fold through all layers" are different operations.
 
 **Mountain / valley** — A mountain fold points the crease toward you (paper
 folds away); a valley folds toward you. Drawn dash-dot and dashed respectively.

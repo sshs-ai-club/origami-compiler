@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Paper PDFs - fetch with ./papers/fetch.sh (see papers/README.md)
+papers/pdf/

@@ -221,3 +221,70 @@ GOAL.md §5), where the state space is close but the kernel is different.
 **Explicitly not a decision to build for generality now.** No second domain
 is implemented, planned, or scheduled. Premature abstraction is a bigger risk
 to this project than lock-in.
+
+---
+
+## 2026-09-12 — CORRECTION: Rabbit Ear is GPLv3, not compatible with our MIT licence
+
+**What was wrong.** STACK.md recommended Rabbit Ear as the core substrate for
+FOLD manipulation and SVG. Rabbit Ear is **GPLv3** (confirmed from its
+`package.json` and npm metadata). Our repo is MIT. Linking a GPLv3 library
+into an MIT core and distributing it is not permitted — the combined work
+would have to be GPLv3.
+
+**Status: open. This blocks the start of coding.** Three options in
+DEPENDENCIES.md §1; the recommendation is option 1 (avoid Rabbit Ear, stay
+MIT), because `flat-folder` — the piece we actually need — is MIT, and FOLD
+parsing plus our own Yoshizawa–Randlett SVG output is roughly two weeks of
+work we largely have to do anyway.
+
+**Whoever decides: append the outcome here.**
+
+---
+
+## 2026-09-12 — flat-folder is the layer solver; port it rather than rewrite
+
+**Decision.** `engine/`'s layer-order solving comes from forking
+[flat-folder](https://github.com/origamimagiro/flat-folder) (**MIT**,
+© 2022 Jason S. Ku) and extracting its solver into a callable library.
+
+**Reason.** It implements *Computing Flat-Folded States* (Akitaya, Demaine &
+Ku, OSME 2024) directly: builds the overlap graph, enforces taco-taco,
+taco-tortilla, tortilla-tortilla and transitivity constraints, and decomposes
+`faceOrder` variables into independent components solved separately. Writing
+this ourselves would take months and be worse.
+
+**Work required:** it is a browser application, not a library — the solver
+must be extracted behind a `solveLayerOrders(fold)` interface. Bounded,
+2–3 weeks, and the single highest-value integration in the project.
+
+---
+
+## 2026-09-12 — Creasy is a behavioural oracle, never a dependency
+
+**Decision.** Do not link Creasy. Use it by running it and comparing its
+reported next-steps against our sequencer's.
+
+**Reason.** GPL-3.0 (incompatible as above) and Java (our core is
+TypeScript). Comparing outputs creates no derived work.
+
+**Also:** implement from the papers, not from Creasy's source. Reimplementing
+from a GPL codebase studied line-by-line is legally murkier than implementing
+from the published description, and Akitaya–Mitani 2013 is clearer anyway.
+
+---
+
+## 2026-09-12 — Paper PDFs are gitignored, fetched by script
+
+**Decision.** `papers/MANIFEST.tsv` plus `papers/fetch.sh` are committed;
+`papers/pdf/` is gitignored.
+
+**Reason.** arXiv's default licence grants arXiv distribution rights, not
+onward redistribution; ACM and Springer PDFs certainly do not. A manifest
+plus a script gives everyone the same papers with one command and no
+copyright exposure.
+
+**Note:** the environment these docs were written in cannot reach arxiv.org,
+erikdemaine.org, ACM, Springer or Semantic Scholar — all blocked by a network
+egress proxy. The script must be run from an unrestricted network. This is
+also why RESEARCH.md claims marked **[verify]** are still unverified.
