@@ -1,16 +1,46 @@
 # engine
-Owner: ___
+**Owner: Person A** · Stage 3 · Difficulty: high — this is the foundation
 
-Folded-state representation and simple-fold operations.
+The geometry kernel. Everything else trusts this module to be correct.
 
-In:  FOLD file (crease pattern, flat, unfolded)
-Out: FoldedState — faces, current geometry, layer order
+**In:** FOLD crease pattern, or a `FoldedState` + a `FoldOp`
+**Out:** `FoldedState`, validity verdicts, layer orders
 
-Responsibilities:
-- Parse FOLD (vertices_coords, edges_vertices, edges_assignment M/V/B/F, faces_vertices)
-- Apply a single simple fold, update face geometry + layer order
-- Check flat-foldability locally (Kawasaki, Maekawa) at each vertex
-- Detect layer collisions (a fold that isn't physically valid)
+```
+FoldedState {
+  faces:       [Polygon]       # R^2 (flat) or R^3 (shaped)
+  layer_order: PartialOrder    # on OVERLAPPING face pairs only
+  cp:          FOLD
+  creases:     { edge_id: angle }
+}
+```
 
-Out of scope: choosing which fold to apply next (-> sequencer),
-non-simple folds (reverse/squash/sink) for v1.
+## Responsibilities
+- Parse and validate FOLD (`vertices_coords`, `edges_vertices`,
+  `edges_assignment` M/V/B/F, `faces_vertices`, `faceOrders`)
+- Apply a fold operation: update face geometry **and** layer order
+- **Layer-order solving** — Akitaya–Demaine–Ku facewise conditions (O(n³)
+  constraints between overlapping face pairs) encoded as SAT
+- Local flat-foldability: Kawasaki (alternating angles sum to 180°) and
+  Maekawa (M−V = ±2) per vertex
+- Collision detection: layer crossing in 2D, face intersection in 3D
+- Enumerate which fold operations are valid from a given state
+  (the sequencer's expansion function)
+
+## Read before writing code
+- Akitaya, Demaine & Ku, *Computing Flat-Folded States* (OSME 2024) — the
+  facewise formulation this module implements
+- [`flat-folder`](https://github.com/origamimagiro/flat-folder) source —
+  a working implementation. **Wrap or port it. Do not invent your own
+  formulation.**
+
+## Two warnings
+1. **Kawasaki + Maekawa are necessary but not sufficient.** A pattern can
+   pass at every vertex and still have no valid global layer order. Never
+   report "flat-foldable" from local checks alone.
+2. **Flat and 3D states need different validity predicates.** Keep both
+   behind one interface; do not try to unify them.
+
+## Out of scope
+Choosing which fold to apply (-> `sequencer/`). This module answers "is this
+valid and what does it produce", never "what should we do next".

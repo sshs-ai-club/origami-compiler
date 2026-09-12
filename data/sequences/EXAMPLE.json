@@ -1,0 +1,70 @@
+{
+  "model": "preliminary_base",
+  "source": "traditional; diagrams from <fill in>",
+  "paper": { "size_cm": 15, "shape": "square", "duo": true },
+  "total_panels": 4,
+  "minutes": 3,
+  "max_layers_final": 4,
+  "steps": [
+    {
+      "panel": 1,
+      "batch": "single",
+      "primitive_folds": 1,
+      "op": "valley",
+      "line": "diagonal, corner A to corner C",
+      "reference": "exact",
+      "layers_before": 1,
+      "layers_after": 2,
+      "through_layers": 1,
+      "view_change": "none",
+      "layer_order": [1, 2],
+      "hesitation": 0,
+      "note": ""
+    },
+    {
+      "panel": 2,
+      "batch": "single",
+      "primitive_folds": 1,
+      "op": "valley",
+      "line": "unfold, then diagonal B to D",
+      "reference": "exact",
+      "layers_before": 1,
+      "layers_after": 2,
+      "through_layers": 1,
+      "view_change": "flip",
+      "layer_order": [1, 2],
+      "hesitation": 0,
+      "note": "flip before this step is implied, not drawn"
+    },
+    {
+      "panel": 3,
+      "batch": "symmetry",
+      "primitive_folds": 2,
+      "op": "mountain",
+      "line": "both horizontal/vertical midlines",
+      "reference": "exact",
+      "layers_before": 1,
+      "layers_after": 2,
+      "through_layers": 1,
+      "view_change": "none",
+      "layer_order": [1, 2],
+      "hesitation": 1,
+      "note": "one panel shows both midline creases - counts as ONE panel, TWO primitive folds. This is exactly the batching the cost model must capture."
+    },
+    {
+      "panel": 4,
+      "batch": "collapse",
+      "primitive_folds": 4,
+      "op": "valley",
+      "line": "collapse along existing creases",
+      "reference": "exact",
+      "layers_before": 2,
+      "layers_after": 4,
+      "through_layers": 2,
+      "view_change": "none",
+      "layer_order": [1, 3, 4, 2],
+      "hesitation": 2,
+      "note": "the collapse is one panel but four faces move simultaneously; layer_order read off the open edge with pencilled face numbers"
+    }
+  ]
+}
