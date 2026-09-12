@@ -127,3 +127,97 @@ cannot outspend DeepMind; we can be first in an empty room.
 
 **Reversal condition.** Someone publishes budgeted sequencing first. Then
 pivot to the benchmark corpus (Roadmap Arm E), which would still not exist.
+
+---
+
+## 2026-09-12 — Scope is "anything foldable", routed by tier
+
+**Decision.** The Eiffel Tower is a worked example, not the target. `design/`
+begins with a **router** that classifies the request into one of four tiers
+and dispatches to a different design family for each (GOAL.md §2).
+
+**Reason.** There is no single algorithm covering all foldable shapes. A flap
+tree ("stick figure") is the right abstraction for tree-like targets and the
+wrong one for a mask or a vase — those need surface approximation or
+rotational sweep respectively. A system that always builds a stick figure
+silently produces crease patterns that cannot represent what was asked for.
+
+**Coverage we claim:** Tier 1 (tree-like, ≤8–12 flaps) done well; Tier 2
+(axisymmetric) as a cheap bonus; Tier 3 (arbitrary surfaces) possible but
+**with no step sequence**, so it is labelled a fidelity mode; Tier 4 declined
+with a reason.
+
+**Reversal condition.** If Tier 1 alone proves hard enough to consume the
+whole schedule, ship Tier 1 only and say so.
+
+---
+
+## 2026-09-12 — Base and shaping plan are co-designed, not sequential
+
+**Decision.** A `Candidate` is always the pair (`base_cp`, `shaping_plan`),
+produced together.
+
+**Reason.** A flat base cannot be made 3D after the fact unless it already
+carries flaps in the right places. Designing the base first and then asking
+"now how do we make it 3D" frequently has no answer.
+
+**Clarifies** the earlier base-plus-shaping-tail decision, which described
+the *structure* but not the *order* of design.
+
+---
+
+## 2026-09-12 — No model training, no GPUs in the core
+
+**Decision.** The geometry kernel, layer-order solver, sequencer, diagram
+generator and animator are exact, deterministic, CPU-only. The only neural
+components are LLM API calls for parsing requests and writing step text.
+
+**Reason.** Learn2Fold and COrigami both split the same way — neural for
+semantics, symbolic for geometry — and OrigamiBench, GamiBench and
+ORIGAMISPACE all independently found that frontier multimodal models fail at
+single-step folding geometry. Training a network to approximate what a SAT
+solver computes exactly would be strictly worse. DeepMind's compute went into
+COrigami's RL *aesthetic polish*, not its geometry.
+
+**Consequence:** v1 runs on a laptop plus an API key. Preserve this.
+
+**Reversal condition.** Only Plan D (learned search policy), and only after M5.
+
+---
+
+## 2026-09-12 — TypeScript core, headless library plus thin shells
+
+**Decision.** A TypeScript core library with no DOM dependency, driven by a
+Node CLI (batch runs, tests, cost-model fitting) and a web shell (the
+product). Python for offline analysis only.
+
+**Reason.** Every tool we intend to reuse — Rabbit Ear, `flat-folder`,
+Origami Simulator, FOLD tooling — is JavaScript. A Python core would mean
+porting `flat-folder` (a research-paper implementation, weeks of work) or
+shelling out to Node anyway. TypeScript also runs unmodified in the browser,
+so the product deploys as a **static site** with no backend and no hosting
+cost.
+
+**Cost accepted:** SAT and numerics are slower in JS. Mitigate with a
+WASM-compiled solver; move one component if a specific bottleneck proves
+fatal, not the architecture.
+
+**Reversal condition.** A measured, unavoidable performance wall in the
+layer solver.
+
+---
+
+## 2026-09-12 — Sequencer is written against an abstract Domain interface
+
+**Decision.** `sequencer/` depends on a generic `Domain<State, Op>` interface
+(STACK.md §4), not on origami types. Search, budget pruning and partial-plan
+reporting know nothing about paper.
+
+**Reason.** Costs nothing now — it is better design regardless — and keeps
+open the extension to other budgeted constructive-planning domains
+(sheet-metal bending, self-folding robotics, assembly planning; see
+GOAL.md §5), where the state space is close but the kernel is different.
+
+**Explicitly not a decision to build for generality now.** No second domain
+is implemented, planned, or scheduled. Premature abstraction is a bigger risk
+to this project than lock-in.

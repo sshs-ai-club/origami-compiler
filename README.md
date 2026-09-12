@@ -63,9 +63,20 @@ along existing creases". Defining that batching precisely is the thing
 nobody has written down, and it's our main intended contribution.
 → ARCHITECTURE.md §3
 
+## Scope
+
+**Anything foldable**, routed by target class: tree-like figures (our primary
+path), axisymmetric forms (cheap bonus), arbitrary surfaces (possible, but no
+step sequence exists — see GOAL.md §2). The Eiffel Tower is a worked example
+throughout these docs, not the goal.
+
 ## Status
 
 Planning. No code yet. See ROADMAP.md for milestones.
+
+**No GPUs, no model training.** The core is exact geometry and search; the
+only neural component is an LLM API call for parsing requests and writing
+step text. The whole v1 runs on a laptop. See STACK.md.
 
 ## Documents
 
@@ -77,6 +88,8 @@ Planning. No code yet. See ROADMAP.md for milestones.
 | [docs/PLANS.md](docs/PLANS.md) | Four routes, rated by mathematical depth and risk |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Milestones M0–M6 with exit tests |
 | [docs/OWNERSHIP.md](docs/OWNERSHIP.md) | Who owns what, and the seam between them |
+| [docs/MATH.md](docs/MATH.md) | Study ladder, and the open problems we could actually settle |
+| [docs/STACK.md](docs/STACK.md) | TypeScript core, no GPUs, library + thin shells |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | **Read this first** if you're new — the vocabulary is treacherous |
 | [docs/decisions.md](docs/decisions.md) | Running log of why we chose things |
 
