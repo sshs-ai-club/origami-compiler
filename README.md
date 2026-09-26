@@ -88,17 +88,20 @@ npm run check                         # typecheck + tests
 | Stage | v0 | Not yet |
 |---|---|---|
 | `intent/` | Rule parser (offline) + Claude parser (`--claude`); flags ambiguity, never guesses a budget | — |
-| `design/` | Router; stick-figure library + Claude proposals; box-pleat grid packing (L∞ tree condition); step estimate; budget pruning | **Crease pattern from packing** (molecule filling, M5); fitted constants (M2) |
-| `engine/` | Exact simple folds (valley/mountain, all layers or one flap), layer order, FOLD export, Kawasaki/Maekawa | Layer solver for arbitrary CPs (flat-folder port, M1); non-simple folds |
+| `design/` | Router; stick-figure library + Claude proposals; box-pleat grid packing (L∞ tree condition); **BP Studio layout** of the packing; crease pattern **verified by flat-folder** when the layout needs no completion (e.g. crane); step estimate; budget pruning | **Completing layouts that leave paper between flaps** (the dragon); fitted constants (M2) |
+| `engine/` | Exact simple folds (valley/mountain, all layers or one flap), layer order, FOLD export, Kawasaki/Maekawa; **flat-folder solver for any crease pattern** (M/V assignment + layer order) | Non-simple folds |
 | `sequencer/` | StepPlan + replay-as-verification; exact N×N grid precrease planner; authored dart; beam-search skeleton | **Collapse and shaping sequences** (M4) |
 | `diagrams/` | Exact Yoshizawa–Randlett SVG panels, layer-correct | View selection |
 | `motion/` | Step-faithful keyframes; offline HTML player; `.webm` export | Non-simple operator templates |
 | `illustrate/` | Image-model request builder (restyle exact diagrams only) | A provider |
 
-So for the dragon today: the request is understood, three candidate designs
-are packed and costed against the budget, and the first 14 steps
-(precreasing the 21×21 grid) are generated, verified and animated. The
-collapse (~80 steps) and shaping (~32) are the research ahead.
+So for the dragon today: the request is understood, candidate designs are
+packed, laid out by BP Studio and costed against the budget, and the grid
+precrease is generated, verified and animated. The dragon's crease pattern is
+not complete yet — the book circles the vertices that still need creases —
+because filling the paper between flaps (Lang's elevation creases) is the next
+task. For designs whose flaps meet edge to edge (the crane) the crease pattern
+is complete and verified by flat-folder.
 
 **No GPUs, no model training.** The core is exact geometry and search; the
 only neural component is an LLM API call for parsing requests and proposing

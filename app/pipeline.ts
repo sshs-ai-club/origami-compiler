@@ -7,7 +7,7 @@ import { variantsFor } from "../design/library.ts";
 import { proposeStickFigure } from "../design/llm.ts";
 import type { FlapTree } from "../design/tree.ts";
 import { resultGeometry, stepGeometry } from "../diagrams/geometry.ts";
-import { creasePatternSvg, designSvg, diagramSvg } from "../diagrams/svg.ts";
+import { blueprintSvg, creasePatternSvg, designSvg, diagramSvg } from "../diagrams/svg.ts";
 import { type FoldFile, creasePattern, foldedForm } from "../engine/foldfile.ts";
 import { localFlatFoldability } from "../engine/local.ts";
 import { maxLayers } from "../engine/state.ts";
@@ -36,6 +36,8 @@ export interface PipelineResult {
   design: DesignResult;
   chosen: Candidate | null;
   designSvgs: Record<string, string>;
+  /** Per candidate: the verified crease pattern, or the blueprint with unfinished vertices circled. */
+  cpSvgs: Record<string, string>;
   rendered: RenderedPlan | null;
   /** Things the user must be told, in order. */
   notes: string[];
@@ -77,7 +79,11 @@ export async function runPipeline(request: string, opts: { useClaude: boolean; p
 
   const design = generateCandidates(spec, trees);
   const designSvgs: Record<string, string> = {};
-  for (const c of design.candidates) designSvgs[c.id] = designSvg(c.tree, c.packing);
+  const cpSvgs: Record<string, string> = {};
+  for (const c of design.candidates) {
+    designSvgs[c.id] = designSvg(c.tree, c.packing);
+    cpSvgs[c.id] = c.crease_pattern.status === "verified" ? creasePatternSvg(c.crease_pattern.cp, 300) : blueprintSvg(c.blueprint, c.crease_pattern.violations);
+  }
   if (!design.route.supported) notes.push(`Stopped at design: ${design.route.reason}`);
   else if (design.candidates.length === 0) notes.push("No candidate fits the constraints. See the rejected list for why.");
 
@@ -90,7 +96,10 @@ export async function runPipeline(request: string, opts: { useClaude: boolean; p
     plan.status = "partial";
     plan.stalled_at = {
       phase: "collapse",
-      reason: "The crease pattern for this design is not generated yet (molecule filling, M5), so there is nothing to collapse. The sequencer for the collapse is M4.",
+      reason:
+        chosen.crease_pattern.status === "verified"
+          ? "The crease pattern is verified by flat-folder, but the collapse sequence is not generated yet (M4)."
+          : `The crease pattern is not complete yet: ${chosen.crease_pattern.reason}. There is nothing to collapse until it is.`,
     };
     plan.remaining_estimate = { collapse: chosen.est_steps.collapse, shaping: chosen.est_steps.shaping };
     rendered = renderPlan(plan);
@@ -100,5 +109,5 @@ export async function runPipeline(request: string, opts: { useClaude: boolean; p
         `Estimated total ${chosen.est_steps.total}; the collapse and shaping constants are placeholders until Milestone 2.`,
     );
   }
-  return { spec, trees, design, chosen, designSvgs, rendered, notes };
+  return { spec, trees, design, chosen, designSvgs, cpSvgs, rendered, notes };
 }

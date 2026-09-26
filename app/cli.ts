@@ -93,7 +93,7 @@ async function main() {
   for (const a of s.ambiguous) console.log(`  note    ${a}`);
   console.log(`route     tier ${res.design.route.tier ?? "?"} · ${res.design.route.family} · ${res.design.route.reason}`);
   for (const c of res.design.candidates) {
-    console.log(`candidate ${c.id.padEnd(28)} ${String(c.flaps).padStart(2)} flaps · scale ${c.packing.scale.toFixed(2)} (${c.packing.symmetry}) · ~${c.est_steps.total} steps (${c.est_steps.precrease} exact + ${c.est_steps.collapse + c.est_steps.shaping} est.)`);
+    console.log(`candidate ${c.id.padEnd(28)} ${String(c.flaps).padStart(2)} flaps · scale ${c.packing.scale.toFixed(2)} = ${((100 * c.packing.scale) / c.paper_spec.grid_n).toFixed(1)}% (${c.packing.symmetry}) · CP ${c.crease_pattern.status} · ~${c.est_steps.total} steps (${c.est_steps.precrease} exact + ${c.est_steps.collapse + c.est_steps.shaping} est.)`);
   }
   for (const r of res.design.rejected) console.log(`rejected  ${r.id}: ${r.reason}`);
   for (const n of res.notes) console.log(`>> ${n}`);

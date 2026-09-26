@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseRequest } from "../intent/rules.ts";
 import { generateCandidates } from "./candidates.ts";
+import { layoutBlueprint } from "./blueprint.ts";
+import { creasePatternFromBlueprint } from "./complete.ts";
 import { estimateSteps } from "./estimate.ts";
+import { localFlatFoldability } from "../engine/local.ts";
 import { LIBRARY, variantsFor } from "./library.ts";
 import { packTree, verifyPacking } from "./packing.ts";
 import { route } from "./router.ts";
@@ -58,8 +61,10 @@ describe("routing and candidates", () => {
     expect([16, 24, 32]).toContain(top.paper_spec.grid_n);
     expect(top.paper_spec.grid_square_cm).toBeCloseTo(21 / top.paper_spec.grid_n, 2);
     expect(top.within_budget).toBe(true);
+    // Honest current state: the dragon layout needs completion, which does not exist yet.
     expect(top.base_cp).toBeNull();
-    expect(top.cp_status).toMatch(/not generated/);
+    expect(top.crease_pattern.status).toBe("incomplete");
+    expect(top.cp_status).toMatch(/incomplete/);
     expect(top.flaps).toBe(leaves(top.tree).length);
   });
 
@@ -75,5 +80,34 @@ describe("routing and candidates", () => {
     expect(e.basis.precrease).toBe("exact (planner)");
     expect(e.basis.collapse).toMatch(/placeholder/);
     expect(e.total).toBe(e.precrease + e.collapse + e.shaping);
+  });
+});
+
+describe("BP Studio layout -> crease pattern", () => {
+  it("crane on a diagonal packing: the blueprint is already complete (preliminary base) and verifies", () => {
+    const crane = LIBRARY.crane![0]!;
+    const bp = layoutBlueprint(crane, packTree(crane, 16, "diagonal")!);
+    expect(bp.diagnostics.invalidJunctions).toBe(0);
+    const r = creasePatternFromBlueprint(bp);
+    expect(r.status).toBe("verified");
+    if (r.status !== "verified") return;
+    // two diagonals + two midlines, each split at the centre: 8 creases, Maekawa-valid
+    expect(r.cp.edges_assignment!.filter((a) => a === "M" || a === "V")).toHaveLength(8);
+    expect(localFlatFoldability(r.cp)).toEqual([]);
+  });
+
+  it("dragon: reports exactly which vertices still need creases instead of guessing", () => {
+    const dragon = LIBRARY.dragon!.find((t) => t.variant === "simple")!;
+    const r = creasePatternFromBlueprint(layoutBlueprint(dragon, packTree(dragon, 16, "diagonal")!));
+    expect(r.status).toBe("incomplete");
+    if (r.status === "incomplete") expect(r.violations.length).toBeGreaterThan(0);
+  });
+
+  it("the crane request gets a candidate with a verified crease pattern", () => {
+    const spec = parseRequest("a traditional crane");
+    const res = generateCandidates(spec, variantsFor("crane", spec.detail));
+    const verified = res.candidates.filter((c) => c.base_cp !== null);
+    expect(verified.length).toBeGreaterThan(0);
+    expect(verified[0]!.cp_status).toMatch(/verified by flat-folder/);
   });
 });

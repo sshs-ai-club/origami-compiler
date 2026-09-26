@@ -5,6 +5,7 @@
 
 import type { Vec } from "../engine/geom.ts";
 import type { FoldFile } from "../engine/foldfile.ts";
+import type { Blueprint } from "../design/blueprint.ts";
 import type { Packing } from "../design/packing.ts";
 import { type FlapTree, leaves } from "../design/tree.ts";
 import type { DiagramGeometry } from "./geometry.ts";
@@ -100,6 +101,28 @@ export function creasePatternSvg(cp: FoldFile, size = 420): string {
             ? `stroke="${PALETTE.valley}" stroke-width="1" stroke-dasharray="5 3"`
             : `stroke="${PALETTE.crease}" stroke-width="0.8"`;
     out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" ${style}/>`);
+  }
+  out.push("</svg>");
+  return out.join("\n");
+}
+
+/** BP Studio's layout on its grid, with vertices that still need creases circled. */
+export function blueprintSvg(bp: Blueprint, violations: readonly Vec[] = [], size = 300): string {
+  const T = pageTransform([0, 0, 1, 1], size, 12);
+  const out = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f(T.w)} ${f(T.h)}" width="${f(T.w)}" height="${f(T.h)}">`, `<rect width="100%" height="100%" fill="#fff"/>`];
+  for (let k = 1; k < bp.grid_n; k++) {
+    const [a, b] = [T.at([k / bp.grid_n, 0]), T.at([k / bp.grid_n, 1])];
+    const [c, d] = [T.at([0, k / bp.grid_n]), T.at([1, k / bp.grid_n])];
+    out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#eceff1" stroke-width="0.6"/><line x1="${f(c[0])}" y1="${f(c[1])}" x2="${f(d[0])}" y2="${f(d[1])}" stroke="#eceff1" stroke-width="0.6"/>`);
+  }
+  const col = { border: PALETTE.edge, ridge: PALETTE.mountain, hinge: PALETTE.valley };
+  for (const l of bp.lines) {
+    const [a, b] = [T.at(l.a), T.at(l.b)];
+    out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${col[l.role]}" stroke-width="${l.role === "border" ? 1.6 : 1.2}"/>`);
+  }
+  for (const v of violations) {
+    const [x, y] = T.at(v);
+    out.push(`<circle cx="${f(x)}" cy="${f(y)}" r="5" fill="none" stroke="#d92d20" stroke-width="1.6"/>`);
   }
   out.push("</svg>");
   return out.join("\n");

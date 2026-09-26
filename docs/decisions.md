@@ -435,3 +435,63 @@ user says "grid".
 
 **Reason.** The project owner's own request meant 21 cm paper. The grid read
 was the wrong default, and asking about it every time was noise.
+
+---
+
+## 2026-09-26 — flat-folder vendored and wrapped: the engine can verify any crease pattern
+
+**Decision.** The six solver files of flat-folder (MIT, commit `d500048`) are
+copied unmodified into `vendor/flat-folder/`; `engine/flatfold.ts` wraps them
+as `solveFlatFold(fold)`, mirroring flat-folder's own headless batch path.
+Unassigned ("U") creases are allowed: the solver picks M/V, which is read back
+from the first solution together with FOLD `faceOrders`.
+
+**Two findings from wrapping it.** flat-folder assumes every edge is stored as
+(smaller, larger) vertex index; and it does not check Kawasaki — it builds
+folded coordinates along a spanning tree and silently accepts a locally
+unfoldable vertex. The wrapper sorts edges and runs our Kawasaki check first.
+
+**Closes** the "port flat-folder" item (DEPENDENCIES.md §3, ROADMAP M1).
+
+---
+
+## 2026-09-26 — BP Studio's core, bundled, is the stick-figure → layout stage
+
+**Decision.** BP Studio (MIT, TypeScript, Mu-Tsun Tsai) computes box-pleating
+layouts — flap and river contours, ridges, stretch gadgets — from a tree and
+flap positions, which is exactly what `design/packing.ts` produces.
+`vendor/bp-studio/build.sh` bundles its core from a pinned commit (`5079811`)
+with a small adapter (`entry.ts`) into `core.mjs` (≈260 KB, committed).
+Integer edge lengths are required; rounding each edge down keeps the packing
+valid.
+
+**Limit, in BP Studio's own manual:** "CP exporting is not intended to generate
+flat-foldable CPs." Its output is a blueprint.
+
+---
+
+## 2026-09-26 — A crease pattern counts only when flat-folder verifies it; completion is open
+
+**Decision.** `design/complete.ts` turns the blueprint into unassigned creases
+and asks flat-folder. Verified → the candidate carries `base_cp` with M/V.
+Otherwise the candidate is "incomplete", with the vertices that are not flat-
+foldable, and the book circles them.
+
+**Status.** Layouts whose flap regions meet edge to edge verify as-is (e.g. the
+crane → preliminary base). Layouts that leave paper between flaps — the
+dragon — do not: the leftover paper needs Lang's elevation / axial-parallel
+creases (Origami Design Secrets 2nd ed. ch. 13–14; Lang & Tsai, GOPS, OSME 7),
+which we cannot access from the dev environment and will not reconstruct from
+memory (START.md testing rule). That completion algorithm is the next task.
+
+**Also open:** flat-folder returns the first valid state; we should choose the
+state that matches the intended base (e.g. the preliminary base rather than an
+equally valid mixed assignment).
+
+---
+
+## 2026-09-26 — Candidates are ranked by paper efficiency, not raw scale
+
+**Decision.** Rank by scale / N (flap length as a fraction of the sheet), and
+within 2% prefer the coarser grid. Raw scale grows with N, so the previous
+ranking always preferred the finest grid for no benefit.

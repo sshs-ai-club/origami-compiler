@@ -46,4 +46,4 @@ Choosing which fold to apply (-> `sequencer/`). This module answers "is this
 valid and what does it produce", never "what should we do next".
 
 ## Status (v0)
-`geom.ts`, `state.ts`, `fold.ts` (simple folds; flap folds carry resting layers), `foldfile.ts` (FOLD crease pattern + folded form with `faceOrders`), `local.ts` (Kawasaki/Maekawa). The layer order is a global stack rank, valid for simple-fold states only; the flat-folder port is still M1.
+`geom.ts`, `state.ts`, `fold.ts` (simple folds; flap folds carry resting layers), `foldfile.ts` (FOLD crease pattern + folded form with `faceOrders`), `local.ts` (Kawasaki/Maekawa). The layer order in `state.ts` is a global stack rank, valid for simple-fold states only. For any other crease pattern use `flatfold.ts`: flat-folder (vendored, MIT) decides flat-foldability, assigns unassigned creases and returns faceOrders. It does not check Kawasaki itself, so the wrapper does.

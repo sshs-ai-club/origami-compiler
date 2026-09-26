@@ -38,12 +38,21 @@ export function bookHtml(res: PipelineResult): string {
   const budget = s.step_budget ? `${s.step_budget.approximate ? "about " : ""}≤ ${s.step_budget.max}` : "none given";
   const rows = res.design.candidates
     .map(
-      (c, i) => `<tr><td>${i === 0 ? "<b>chosen</b><br>" : ""}${esc(c.id)}</td><td>${c.flaps}</td><td>${c.paper_spec.grid_n}×${c.paper_spec.grid_n}, ${c.packing.symmetry}</td><td>${c.packing.scale.toFixed(2)}</td>
+      (c, i) => `<tr><td>${i === 0 ? "<b>chosen</b><br>" : ""}${esc(c.id)}</td><td>${c.flaps}</td><td>${c.paper_spec.grid_n}×${c.paper_spec.grid_n}, ${c.packing.symmetry}</td><td>${c.packing.scale.toFixed(2)} <span class="muted">(${((100 * c.packing.scale) / c.paper_spec.grid_n).toFixed(1)}% of sheet)</span></td>
 <td><b>${c.est_steps.total}</b> <span class="muted">= ${c.est_steps.precrease} precrease (exact) + ${c.est_steps.collapse} collapse + ${c.est_steps.shaping} shaping (estimated)</span></td>
 <td>${c.within_budget === null ? "—" : c.within_budget ? '<span class="ok">yes</span>' : '<span class="bad">no</span>'}</td><td>${c.confidence.toFixed(1)}</td></tr>`,
     )
     .join("\n");
-  const figures = res.design.candidates.map((c) => `<div class="figure card"><b>${esc(c.id)}</b> <span class="muted">stick figure · grid packing</span>${res.designSvgs[c.id]}${c.notes.map((n) => `<div class="warn">${esc(n)}</div>`).join("")}</div>`).join("\n");
+  const figures = res.design.candidates
+    .map((c) => {
+      const verified = c.crease_pattern.status === "verified";
+      const cpLabel = verified
+        ? `<span class="ok">crease pattern verified by flat-folder</span> (M/V assigned)`
+        : `<span class="bad">crease pattern incomplete</span>: BP Studio layout; circled vertices still need creases`;
+      return `<div class="figure card"><b>${esc(c.id)}</b> <span class="muted">stick figure · grid packing</span>${res.designSvgs[c.id]}
+<p style="margin:10px 0 4px">${cpLabel}</p>${res.cpSvgs[c.id]}${c.notes.map((n) => `<div class="warn">${esc(n)}</div>`).join("")}</div>`;
+    })
+    .join("\n");
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(r?.plan.title ?? "origami-compiler")}</title><style>${CSS}</style></head><body><main>
@@ -70,7 +79,7 @@ ${
   res.design.candidates.length
     ? `<h2>3 · Candidates</h2>
 <div class="card scroll"><table><tr><th>design</th><th>flaps</th><th>grid</th><th>scale</th><th>steps</th><th>in budget</th><th>confidence</th></tr>${rows}</table>
-<p class="muted">Scale = grid squares per unit of stick-figure length; bigger means longer, thicker flaps. Packing is a necessary condition only. No candidate has a crease pattern yet: ${esc(res.design.candidates[0]!.cp_status)}.</p></div>
+<p class="muted">Scale = grid squares per unit of stick-figure length; as a percentage of the sheet it measures paper efficiency (bigger means longer, thicker flaps). Layout by BP Studio; a crease pattern counts as done only when flat-folder proves it folds flat. Chosen design: ${esc(res.design.candidates[0]!.cp_status)}.</p></div>
 <div class="steps" style="margin-top:14px">${figures}</div>
 ${res.design.rejected.length ? `<details class="card" style="margin-top:14px"><summary>${res.design.rejected.length} rejected</summary><ul>${res.design.rejected.map((x) => `<li>${esc(x.id)}: ${esc(x.reason)}</li>`).join("")}</ul></details>` : ""}`
     : ""
