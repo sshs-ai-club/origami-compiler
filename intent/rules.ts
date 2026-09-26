@@ -46,10 +46,9 @@ export function parseRequest(raw: string): DesignSpec {
     else if (unit.startsWith("in") || unit === '"') size_cm = Math.round(n * 2.54 * 10) / 10;
     else if (unit.startsWith("grid") || unit.startsWith("square") || dims[4]) grid_n = Math.round(n);
     else {
-      // No unit. In box pleating "N×N" almost always names the grid, so read it
-      // that way — but 21×21 could also be 21cm paper (A4 width), so ask.
-      grid_n = Math.round(n);
-      ambiguous.push(`"${dims[0].trim()}" has no unit. I read it as a ${grid_n}×${grid_n} box-pleating grid. If you meant ${n}cm × ${n}cm paper, say so.`);
+      // No unit: the size of the sheet the user has, in cm (decisions.md 2026-09-26).
+      // The grid is a design choice, made by design/, not by the user.
+      size_cm = n;
     }
   }
   if (size_cm === null) {

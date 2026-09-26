@@ -6,7 +6,8 @@ import { renderPlan, runPipeline } from "./pipeline.ts";
 describe("end-to-end pipeline (rule-based, offline)", () => {
   it("reference request: spec -> candidates -> partial plan -> book, and says what is missing", async () => {
     const res = await runPipeline("I want to make a realistic dragon, with 21x21 paper, with about ~ 200 steps or less.", { useClaude: false });
-    expect(res.chosen?.id).toBe("dragon_realistic_g21");
+    expect(res.chosen?.variant).toBe("realistic");
+    expect(res.chosen?.paper_spec.size_cm).toBe(21);
     const r = res.rendered!;
     expect(r.plan.status).toBe("partial");
     expect(r.plan.stalled_at?.phase).toBe("collapse");
@@ -16,7 +17,6 @@ describe("end-to-end pipeline (rule-based, offline)", () => {
     expect(res.notes.join(" ")).toMatch(/Not generated yet/);
     const html = bookHtml(res);
     expect(html).toContain("Partial.");
-    expect(html).toContain("no unit");
   });
 
   it("unsupported tiers stop at design with the reason", async () => {

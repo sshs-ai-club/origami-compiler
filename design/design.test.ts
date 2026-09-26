@@ -49,13 +49,14 @@ describe("routing and candidates", () => {
     expect(mask.reason).toMatch(/not a step-by-step|collapse/);
   });
 
-  it("the reference request yields in-budget dragon candidates on a 21 grid", () => {
+  it("the reference request yields in-budget dragon candidates, grid chosen by design", () => {
     const spec = parseRequest("I want to make a realistic dragon, with 21x21 paper, with about ~ 200 steps or less.");
     const res = generateCandidates(spec, variantsFor("dragon", spec.detail));
     expect(res.candidates.length).toBeGreaterThan(0);
     const top = res.candidates[0]!;
     expect(top.variant).toBe("realistic");
-    expect(top.paper_spec.grid_n).toBe(21);
+    expect([16, 24, 32]).toContain(top.paper_spec.grid_n);
+    expect(top.paper_spec.grid_square_cm).toBeCloseTo(21 / top.paper_spec.grid_n, 2);
     expect(top.within_budget).toBe(true);
     expect(top.base_cp).toBeNull();
     expect(top.cp_status).toMatch(/not generated/);

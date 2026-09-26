@@ -33,7 +33,7 @@ ${SUBJECTS.map((s) => `- ${s.key}: ${s.synonyms.join(", ")}`).join("\n")}
 Rules:
 - Never invent a step budget. If the user gives no number of steps, step_budget_max is null.
 - "about", "~", "around" make the budget approximate. "under", "less than", "at most", "or less" make it an upper bound; both can apply.
-- "N x N" with a unit (cm, mm, inch) is the sheet size. "N x N grid" is a box-pleating grid. "N x N" with no unit: set sheet_grid_n = N and add an ambiguity note asking whether they meant N cm paper.
+- "N x N" with a unit (cm, mm, inch) is the sheet size; with no unit it is also the sheet size in cm. Only "N x N grid" (the word grid) sets sheet_grid_n.
 - "realistic", "3D", "shaped" mean style "3d". "realistic", "detailed", "complex" mean detail "high"; "simple", "easy" mean "simple".
 - Only single uncut square sheets are supported. If the user asks for cutting, glue, several sheets or a non-square sheet, add a note saying so.
 - If constraints conflict (for example, highly detailed but under 50 steps), add a note asking which matters more.

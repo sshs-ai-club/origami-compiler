@@ -17,5 +17,5 @@
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["engine", "intent", "design", "sequencer", "diagrams", "motion", "illustrate", "app", "tests"]
+  "include": ["engine", "intent", "design", "sequencer", "diagrams", "motion", "illustrate", "app", "vitest.config.ts"]
 }

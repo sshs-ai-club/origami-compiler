@@ -9,10 +9,9 @@ describe("rule-based intent parser", () => {
     expect(s.style).toBe("3d");
     expect(s.detail).toBe("high");
     expect(s.step_budget).toEqual({ max: 200, approximate: true });
-    expect(s.sheet.grid_n).toBe(21);
-    expect(s.sheet.size_cm).toBeNull();
-    // unit-less 21x21 is flagged, not silently decided
-    expect(s.ambiguous.some((a) => a.includes("no unit"))).toBe(true);
+    // unit-less 21x21 is the sheet the user has; the grid is left to design/
+    expect(s.sheet.size_cm).toBe(21);
+    expect(s.sheet.grid_n).toBeNull();
   });
 
   it("parses the Eiffel tower request from GOAL.md", () => {

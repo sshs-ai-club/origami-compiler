@@ -408,3 +408,30 @@ at all. Decide by fold test, not by taste.
 vocabulary as the rule parser; a proposed stick figure that is not a valid
 metric tree is rejected. Without credentials, or on any API error, the
 rule-based parser runs and the book says so.
+
+---
+
+## 2026-09-26 — CONFIRMED: no GPL code, repo stays MIT
+
+**Decision.** The project owner confirmed DEPENDENCIES.md §1 option 1. Closes
+the open licence entry above.
+
+---
+
+## 2026-09-26 — No image-model provider for now
+
+**Decision.** The project owner judged the exact diagrams in the book good
+enough. `illustrate/` stays as an unused optional stage; no provider is wired
+in and none is planned.
+
+---
+
+## 2026-09-26 — REVERSES "unit-less N×N is read as a grid": it is the sheet size
+
+**Decision.** A unit-less "N×N" (e.g. "21x21 paper") is the size, in cm, of
+the paper the user has. The grid is a design choice made by `design/`
+(default candidates on 16, 24 and 32), never read from the request unless the
+user says "grid".
+
+**Reason.** The project owner's own request meant 21 cm paper. The grid read
+was the wrong default, and asking about it every time was noise.
