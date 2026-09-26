@@ -64,3 +64,6 @@ places for the shaping to be possible. A `Candidate` is always the pair.
 Sequencing (-> `sequencer/`). This module *estimates* step count; it does not
 compute the sequence. That separation is what lets the user see honest
 numbers before committing (ARCHITECTURE.md §5).
+
+## Status (v0)
+`router.ts`, `library.ts` (stick figures), `llm.ts` (Claude-proposed stick figures, validated), `packing.ts` (box-pleat grid packing, L∞ tree condition, symmetric search), `estimate.ts` (precrease exact, collapse/shaping placeholder constants), `candidates.ts`. **No candidate has a crease pattern yet**: molecule filling is not implemented.

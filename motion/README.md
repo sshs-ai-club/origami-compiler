@@ -36,3 +36,6 @@ hand-authored animation template. Add them one at a time.
 
 We use step-faithful as the primary path and Origami Simulator for physical
 validation and as a fallback. See docs/decisions.md.
+
+## Status (v0)
+`keyframes.ts` (per op: faces already cut, moving set, axis, signed angle), `player.ts` (self-contained HTML canvas player, scrub + step captions, `?autoplay=1`). `npm run origami -- video <player.html>` records a `.webm` with headless Chromium.

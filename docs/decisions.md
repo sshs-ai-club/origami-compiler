@@ -288,3 +288,150 @@ copyright exposure.
 erikdemaine.org, ACM, Springer or Semantic Scholar — all blocked by a network
 egress proxy. The script must be run from an unrestricted network. This is
 also why RESEARCH.md claims marked **[verify]** are still unverified.
+
+---
+
+## 2026-09-26 — v0 walking skeleton: every stage exists, honestly labelled
+
+**Decision.** Build a thin end-to-end pipeline now (request → spec → stick
+figure → packing → candidates → StepPlan → diagrams → animation → book),
+real where the work is tractable today and explicitly stubbed where it is
+milestone work. What is real: the simple-fold engine and FOLD export, the
+rule-based parser (and a Claude parser), box-pleat packing, the exact N×N grid
+precrease planner, diagrams, keyframes, player, video capture. What is not:
+molecule filling (so no candidate has a crease pattern), the collapse and
+shaping sequences, fitted cost constants.
+
+**Reason.** PLANS.md: "you always have a demo." The skeleton fixes every
+interface in code so both owners can work against it, and the book states on
+its first screen which steps are generated and which are missing.
+
+**Reversal condition.** None; stages get replaced in place.
+
+---
+
+## 2026-09-26 — Licence: no GPL code (option 1), pending team confirmation
+
+**Decision.** The code follows DEPENDENCIES.md §1 option 1: no Rabbit Ear, no
+Creasy. FOLD I/O and geometry utilities are our own. Runtime dependencies are
+`@anthropic-ai/sdk` and `zod` (both MIT); Playwright (Apache-2.0) is dev-only.
+
+**Status.** This is the recommended default, adopted so code could start. The
+team should confirm it here; nothing written so far forecloses option 2.
+
+---
+
+## 2026-09-26 — Code lives in the module directories; core is checked DOM- and Node-free
+
+**Decision.** Each module's code sits next to its README (`engine/*.ts`,
+etc.), not under a separate `core/`. `tsconfig.core.json` compiles the core
+modules with no DOM and no Node types, so "the core never imports a DOM API"
+is enforced by the compiler. `app/` is the only shell.
+
+---
+
+## 2026-09-26 — Engine v0: global stack rank for simple-fold states
+
+**Decision.** `FlatState` stores one global stacking rank per face. Valid
+because every simple fold moves a block of faces to the very top (valley) or
+bottom (mountain) of where it lands, so a global order restricted to
+overlapping pairs stays consistent. Exported as FOLD `faceOrders`.
+
+**Not a layer solver.** It cannot take an arbitrary crease pattern and find
+its layer order. That remains the flat-folder port (M1).
+
+**Reversal condition.** The first non-simple operator (reverse, squash, sink).
+
+---
+
+## 2026-09-26 — A flap fold carries the layers resting on it
+
+**Decision.** Folding a flap (valley) also moves every layer lying on top of
+it, and everything rigidly attached to those; mountain folds carry layers
+underneath. Carried faces are reported; `strict: true` rejects instead.
+
+**Reason.** Found while authoring the dart plane: the wing fold was rejected
+because a flap from step 3 lies inside the wing, hinged only along the fold
+line. A person folding the wing carries it along. Rejecting that was wrong.
+
+---
+
+## 2026-09-26 — Grid precreasing uses one pinched reference, then midpoints
+
+**Decision.** For N not a power of two, with P = 2^⌊log₂N⌋ and c = (2P−N)/P:
+pinch the right edge at height c by halving, then pinch the diagonal and the
+line (0,1)–(1,c) where they cross, at x = P/N exactly. Crease through it.
+Every other k/N is a midpoint of known lines ("fold edge to crease"), done
+in rounds, one panel per round. Horizontal lines are one "rotate and repeat"
+panel. 21×21 takes 14 panels; 32×32 takes 6.
+
+**Reason.** Exact (no approximation), uses only folds a person can make, and
+leaves no reference lines in the crease pattern (pinches, not creases).
+Precrease panel counts are therefore exact inputs to the step estimate.
+
+---
+
+## 2026-09-26 — Unit-less "N×N" is read as a grid, and the user is asked
+
+**Decision.** "21x21 paper" has no unit. intent/ reads it as a 21×21
+box-pleating grid and adds a note asking whether 21 cm paper was meant.
+
+**Reason.** In box pleating "N×N" nearly always names the grid, but 21 cm is
+the width of A4, so the other reading is plausible. Guessing silently would
+violate intent/README.md.
+
+---
+
+## 2026-09-26 — Image and video generation restyle exact renders; they never originate geometry
+
+**Decision.** Step visuals and the video come from the engine: exact SVG
+diagrams and a step-faithful animation (recordable to .webm). An optional
+`illustrate/` stage prepares image-model requests that take the exact diagram
+as the conditioning image and ask only for restyling. No provider is wired in.
+
+**Alternative rejected.** Generating step images or the folding video directly
+with an image/video model from text. RESEARCH.md §4: OrigamiBench, GamiBench
+and ORIGAMISPACE find frontier multimodal models fail at single-step folding
+geometry, so the output would be plausible and wrong, which is worse than no
+picture (GOAL.md §3).
+
+**Open.** Which provider, and whether stylised images help first-time folders
+at all. Decide by fold test, not by taste.
+
+---
+
+## 2026-09-26 — Claude for parsing and stick figures; rules as the floor
+
+**Decision.** `intent/llm.ts` and `design/llm.ts` call Claude
+(`claude-opus-5`, structured outputs, server-side refusal fallback) behind
+`--claude`. Output is schema-validated, then normalised against the same
+vocabulary as the rule parser; a proposed stick figure that is not a valid
+metric tree is rejected. Without credentials, or on any API error, the
+rule-based parser runs and the book says so.
+
+---
+
+## 2026-09-26 — CONFIRMED: no GPL code, repo stays MIT
+
+**Decision.** The project owner confirmed DEPENDENCIES.md §1 option 1. Closes
+the open licence entry above.
+
+---
+
+## 2026-09-26 — No image-model provider for now
+
+**Decision.** The project owner judged the exact diagrams in the book good
+enough. `illustrate/` stays as an unused optional stage; no provider is wired
+in and none is planned.
+
+---
+
+## 2026-09-26 — REVERSES "unit-less N×N is read as a grid": it is the sheet size
+
+**Decision.** A unit-less "N×N" (e.g. "21x21 paper") is the size, in cm, of
+the paper the user has. The grid is a design choice made by `design/`
+(default candidates on 16, 24 and 32), never read from the request unless the
+user says "grid".
+
+**Reason.** The project owner's own request meant 21 cm paper. The grid read
+was the wrong default, and asking about it every time was noise.

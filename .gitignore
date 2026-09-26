@@ -219,3 +219,7 @@ __marimo__/
 
 # Paper PDFs - fetch with ./papers/fetch.sh (see papers/README.md)
 papers/pdf/
+
+# origami-compiler
+node_modules/
+out/

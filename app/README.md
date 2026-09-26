@@ -26,3 +26,6 @@ The UI must surface, not hide:
 
 A plausible-looking book that cannot actually be folded is worse than an
 honest failure.
+
+## Status (v0)
+`pipeline.ts` (in-memory pipeline), `book.ts` (HTML instruction book with the honesty notes), `cli.ts` (Node shell), `video.ts` (Playwright recorder). A web shell is not started; the book is static HTML.
