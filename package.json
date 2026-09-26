@@ -1,0 +1,28 @@
+{
+  "name": "origami-compiler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Natural language -> origami design -> crease pattern -> folding sequence -> diagrams and animation",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "origami": "tsx app/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.core.json",
+    "check": "npm run typecheck && vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "playwright": "^1.56.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.2"
+  }
+}

@@ -72,11 +72,37 @@ throughout these docs, not the goal.
 
 ## Status
 
-Planning. No code yet. See ROADMAP.md for milestones.
+**v0 walking skeleton (2026-09-26).** Every stage exists and runs end to end;
+what is not built yet is stubbed *and says so in the output*.
+
+```bash
+npm install
+npm run origami -- "I want to make a realistic dragon, with 21x21 paper, with about ~ 200 steps or less."
+# -> out/realistic-dragon/book.html   (spec, candidates, 14 verified steps, crease pattern)
+# -> out/realistic-dragon/player.html (watch it fold)
+npm run origami -- demo dart          # a complete model, every step engine-verified
+npm run origami -- video out/demo-dart/player.html   # -> fold.webm
+npm run check                         # typecheck + tests
+```
+
+| Stage | v0 | Not yet |
+|---|---|---|
+| `intent/` | Rule parser (offline) + Claude parser (`--claude`); flags ambiguity, never guesses a budget | — |
+| `design/` | Router; stick-figure library + Claude proposals; box-pleat grid packing (L∞ tree condition); step estimate; budget pruning | **Crease pattern from packing** (molecule filling, M5); fitted constants (M2) |
+| `engine/` | Exact simple folds (valley/mountain, all layers or one flap), layer order, FOLD export, Kawasaki/Maekawa | Layer solver for arbitrary CPs (flat-folder port, M1); non-simple folds |
+| `sequencer/` | StepPlan + replay-as-verification; exact N×N grid precrease planner; authored dart; beam-search skeleton | **Collapse and shaping sequences** (M4) |
+| `diagrams/` | Exact Yoshizawa–Randlett SVG panels, layer-correct | View selection |
+| `motion/` | Step-faithful keyframes; offline HTML player; `.webm` export | Non-simple operator templates |
+| `illustrate/` | Image-model request builder (restyle exact diagrams only) | A provider |
+
+So for the dragon today: the request is understood, three candidate designs
+are packed and costed against the budget, and the first 14 steps
+(precreasing the 21×21 grid) are generated, verified and animated. The
+collapse (~80 steps) and shaping (~32) are the research ahead.
 
 **No GPUs, no model training.** The core is exact geometry and search; the
-only neural component is an LLM API call for parsing requests and writing
-step text. The whole v1 runs on a laptop. See STACK.md.
+only neural component is an LLM API call for parsing requests and proposing
+stick figures. The whole v1 runs on a laptop. See STACK.md.
 
 ## Documents
 

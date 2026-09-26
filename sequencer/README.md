@@ -33,3 +33,6 @@ tail is handled by a library, not by this search. See ARCHITECTURE.md §2.
 
 ## Out of scope
 Rendering, view selection, step text.
+
+## Status (v0)
+`plan.ts` (StepPlan, `replay` = verification through the engine), `precrease.ts` (exact N×N grid precreasing for any N, see decisions.md), `library/dart.ts` (a complete authored sequence), `search.ts` (budgeted beam search over an abstract `Domain`, not yet used for origami). Collapse and shaping sequencing: not started.

@@ -32,3 +32,6 @@ Any geometry whatsoever. This module does not know what a crease is.
 This is the most visible part of the demo and the least technically
 interesting. It can be a hardcoded dropdown for months. Do not let it
 consume time that `data/` needs. See OWNERSHIP.md.
+
+## Status (v0)
+`rules.ts` (offline, deterministic), `llm.ts` (Claude structured output, falls back to rules), `vocabulary.ts` (shared with design/), `spec.ts` (the contract).

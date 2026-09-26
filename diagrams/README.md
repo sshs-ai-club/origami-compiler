@@ -36,3 +36,6 @@ pressure here". References:
 
 ## Out of scope
 Step text (-> `app/`), sequence order (-> `sequencer/`).
+
+## Status (v0)
+`geometry.ts` (faces bottom-to-top with outlines, so painting in order is exact hidden-line removal; fold lines, arrows, reference marks), `svg.ts` (step panels, crease pattern, stick figure + packing).
