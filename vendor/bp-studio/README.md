@@ -10,4 +10,5 @@ by Mu-Tsun Tsai, MIT licence (see `LICENSE.md`).
 - `core.d.mts` types the adapter. Our caller is `design/blueprint.ts`.
 - What it gives: flap and river contours (hinges), ridges and stretch gadgets
   for a tree plus flap positions. What it does not give: a flat-foldable
-  crease pattern (BP Studio's manual says so). See `design/complete.ts`.
+  crease pattern (BP Studio's manual says so). Completion is `design/boxpleat.ts`;
+  BP Studio is kept as an independent check of its layout.

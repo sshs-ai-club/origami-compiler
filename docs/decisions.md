@@ -495,3 +495,49 @@ equally valid mixed assignment).
 **Decision.** Rank by scale / N (flap length as a fraction of the sheet), and
 within 2% prefer the coarser grid. Raw scale grows with N, so the previous
 ranking always preferred the finest grid for no benefit.
+
+---
+
+## 2026-09-27 — Crease-pattern completion: Lang's uniaxial box pleating (design/boxpleat.ts)
+
+**Supersedes** "completion is open" (2026-09-26). Source: Lang, *Origami Design
+Secrets* 2nd ed., §13.3–13.5 (read from the book; figures transcribed by hand
+into `design/boxpleat.test.ts`).
+
+**Decision.** `boxPleatFromGrid(tree, tips, n, scale)` builds the whole crease
+pattern from the grid packing:
+1. hinge polygons — flap squares and constant-width rivers, the tree rooted at
+   an internal node (which decides which side each river hugs); unused paper
+   is absorbed by expanding flap polygons (rivers may not expand);
+2. ridges — the straight skeleton of each flap polygon (the whole square
+   counts, off-paper part included, as Lang draws edge/corner flaps), a 45°
+   crease at each river bend;
+3. contours — (face, offset) classes linked where faces meet (the bouncing),
+   elevation = breadth-first distance from the tip contours (Lang's "axials,
+   then midpoints"), creases at elevation extrema; a half-step parity clash is
+   reported as needing a level shifter (§14.1), never patched.
+Computed on a half-grid triangle mesh, exact in floating point (dyadic).
+
+**Verification, three layers.** Kawasaki at every vertex; flat-folder finds a
+layer order; and the folded geometry is checked to be the intended base
+(`uniaxialDeviation`): every tip and axial on one line, every contour at its
+elevation. The third matters: flat-folder only proves "folds flat somehow".
+A flat folding's geometry depends only on crease positions, so this check
+tests the construction itself.
+
+**Speed.** Uniaxial bases stack every face on every other — flat-folder's
+worst case. With all creases unassigned the simple dragon took 9.7 min. Lang's
+contour rule (troughs mountain, peaks valley, §13.5 p. 599) is passed as a
+hint: 23 s. Lang calls it approximate and it is sometimes wrong (the fish on
+8×8: refuted with the hint, verified without), so a refuted hint is retried
+unhinted only for small patterns (≤ 200 edges); larger ones are reported as
+not verified. Choosing hints that are always right is open.
+
+**Retired.** `design/complete.ts` (BP Studio blueprint verified as-is). BP
+Studio stays as an independent oracle: its crane layout must match ours.
+
+**Open.** Rounding lengths down after real-valued packing wastes paper (the
+fish on 8×8 leaves 53 of 64 squares unused, absorbed into one flap);
+integer-aware packing and inflating short edges (Lang §13.2) would fix it.
+Level shifters (§14.1), Pythagorean stretches (§14.4) and the plan-view
+midline axial are not implemented.

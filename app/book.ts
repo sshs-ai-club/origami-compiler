@@ -45,10 +45,13 @@ export function bookHtml(res: PipelineResult): string {
     .join("\n");
   const figures = res.design.candidates
     .map((c) => {
-      const verified = c.crease_pattern.status === "verified";
-      const cpLabel = verified
-        ? `<span class="ok">crease pattern verified by flat-folder</span> (M/V assigned)`
-        : `<span class="bad">crease pattern incomplete</span>: BP Studio layout; circled vertices still need creases`;
+      const r = c.completion;
+      const key = `<span class="muted">hinges blue · ridges red · axial contours green · higher contours brown (Lang's structural colouring)</span>`;
+      const cpLabel = !r
+        ? `<span class="muted">crease pattern not attempted for this candidate</span>`
+        : r.status === "verified"
+          ? `<span class="ok">crease pattern verified by flat-folder</span>: structure, then mountain/valley as solved<br>${key}`
+          : `<span class="bad">crease pattern incomplete</span>: ${esc(r.reason)}${r.problems.length ? "; problem points circled" : ""}<br>${key}`;
       return `<div class="figure card"><b>${esc(c.id)}</b> <span class="muted">stick figure · grid packing</span>${res.designSvgs[c.id]}
 <p style="margin:10px 0 4px">${cpLabel}</p>${res.cpSvgs[c.id]}${c.notes.map((n) => `<div class="warn">${esc(n)}</div>`).join("")}</div>`;
     })
@@ -79,7 +82,7 @@ ${
   res.design.candidates.length
     ? `<h2>3 · Candidates</h2>
 <div class="card scroll"><table><tr><th>design</th><th>flaps</th><th>grid</th><th>scale</th><th>steps</th><th>in budget</th><th>confidence</th></tr>${rows}</table>
-<p class="muted">Scale = grid squares per unit of stick-figure length; as a percentage of the sheet it measures paper efficiency (bigger means longer, thicker flaps). Layout by BP Studio; a crease pattern counts as done only when flat-folder proves it folds flat. Chosen design: ${esc(res.design.candidates[0]!.cp_status)}.</p></div>
+<p class="muted">Scale = grid squares per unit of stick-figure length; as a percentage of the sheet it measures paper efficiency (bigger means longer, thicker flaps). Crease patterns are completed by Lang&#39;s uniaxial box pleating (ODS §13) and count as done only when flat-folder finds a layer order and the folded form is the intended base. Chosen design: ${esc(res.design.candidates[0]!.cp_status)}.</p></div>
 <div class="steps" style="margin-top:14px">${figures}</div>
 ${res.design.rejected.length ? `<details class="card" style="margin-top:14px"><summary>${res.design.rejected.length} rejected</summary><ul>${res.design.rejected.map((x) => `<li>${esc(x.id)}: ${esc(x.reason)}</li>`).join("")}</ul></details>` : ""}`
     : ""
@@ -91,7 +94,18 @@ ${
 ${r.plan.status === "partial" && r.plan.stalled_at ? `<div class="warn"><b>Partial.</b> These ${r.plan.steps.length} steps are generated and verified by the geometry engine. They stop at the <b>${esc(r.plan.stalled_at.phase)}</b>: ${esc(r.plan.stalled_at.reason)}${r.plan.remaining_estimate ? ` Still to come: about ${r.plan.remaining_estimate.collapse} collapse and ${r.plan.remaining_estimate.shaping} shaping steps.` : ""}</div>` : ""}
 <p><a href="player.html">▶ Watch it fold</a> · <a href="cp.fold">crease pattern (FOLD)</a> · <a href="folded.fold">folded state (FOLD)</a> · <a href="plan.json">StepPlan</a></p>
 ${stepsSection(r)}
-<h2>5 · Crease pattern so far</h2>
+${
+  res.collapse
+    ? `<h3>Collapse — one move</h3>
+<div class="warn">This panel is not a verified fold sequence: it shows where the paper must end up. That end state <b>is</b> verified — flat-folder finds a layer order, and the folded geometry is checked to be the intended base.</div>
+<div class="steps"><div class="step card">${res.collapse.structuralSvg}<p class="muted">Map: hinges blue · ridges red · axial green · higher contours brown</p></div>
+<div class="step card">${res.collapse.mvSvg}<p class="muted">Mountain (orange dash-dot) and valley (blue dashed), as solved</p></div>
+<div class="step card">${res.collapse.xraySvg}<p class="muted">The base, x-ray: every layer's creases where they land</p></div></div>
+<p>${esc(res.collapse.text)}</p>`
+    : ""
+}
+<h2>5 · The paper after the last generated step</h2>
+<p class="muted">Only what the steps above have folded so far — not the design's full crease pattern, which is under the chosen candidate in section 3.</p>
 <div class="card figure" style="max-width:460px">${r.cpSvg}<p class="muted">Valley = blue dashed, mountain = orange dash-dot. Checks: max ${r.checks.maxLayers} layer(s); ${r.checks.localViolations} Kawasaki/Maekawa violation(s) among folded creases.</p></div>`
     : ""
 }

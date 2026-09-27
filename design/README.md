@@ -66,18 +66,16 @@ compute the sequence. That separation is what lets the user see honest
 numbers before committing (ARCHITECTURE.md §5).
 
 ## Status (v0)
-`router.ts`, `library.ts` (stick figures), `llm.ts` (Claude-proposed stick figures, validated), `packing.ts` (box-pleat grid packing, L∞ tree condition, symmetric search), `blueprint.ts` (BP Studio layout of the packing), `complete.ts` (blueprint -> crease pattern, verified by flat-folder), `estimate.ts` (precrease exact, collapse/shaping placeholder constants), `candidates.ts`.
+`router.ts`, `library.ts` (stick figures), `llm.ts` (Claude-proposed stick figures, validated), `packing.ts` (box-pleat grid packing, L∞ tree condition, symmetric search), `boxpleat.ts` (packing -> complete crease pattern, Lang ODS §13.3–13.5, verified three ways), `blueprint.ts` (BP Studio layout, kept as an independent oracle), `estimate.ts` (precrease exact, collapse/shaping placeholder constants), `candidates.ts` (`completeCandidate` runs `boxpleat.ts`).
 
-### Crease-pattern completion — the open problem
+### Crease-pattern completion
 
-BP Studio gives flap/river contours (hinges) and ridges. Inside a flap region
-nothing more is needed (the crane's blueprint is the complete preliminary base
-and verifies). Where flap regions leave paper between them, the blueprint has
-vertices where a ridge meets two hinges — degree 3, never flat-foldable. The
-leftover paper must be filled with elevation / axial-parallel creases so it
-folds into the base. Sources: Lang, *Origami Design Secrets* 2nd ed.
-ch. 13–14 (uniaxial box pleating); Lang & Tsai, *Generalized Offset
-Pythagorean Stretches*, OSME 7 (2018); Tsai, OSME 8 (2025); Lang & Demaine,
-*Facet Ordering and Crease Assignment in Uniaxial Bases*. The test for any
-completion is already in place: `creasePatternFromBlueprint` must return
-"verified", and the folded form must show one flap per leaf.
+`boxpleat.ts` follows Lang's uniaxial box pleating: hinge polygons and rivers
+from the packing, unused paper absorbed into flap polygons, ridges from the
+straight skeleton, contours bounced across ridges with elevations from the tip
+axials. A result is "verified" only if Kawasaki holds everywhere, flat-folder
+finds a layer order, and the folded geometry is the intended uniaxial base
+(`uniaxialDeviation` = 0). Fixtures: Lang's 6×6 example (Figs 13.12–13.24) in
+`boxpleat.test.ts`. What is missing: level shifters (§14.1), Pythagorean
+stretches (§14.4), integer-aware packing, and hints that make flat-folder fast
+on large patterns without ever being wrong (see docs/decisions.md 2026-09-27).
