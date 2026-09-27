@@ -14,11 +14,13 @@ export interface VertexViolation {
 
 /**
  * Check every interior vertex, considering only creases that are actually
- * folded (fold angle ±180, or M/V when no angles are given). Unfolded
+ * folded (fold angle ±180, or M/V/U when no angles are given). Unfolded
  * precreases do not take part in the folded state, so they are skipped.
+ * Unassigned (U) creases count for Kawasaki; Maekawa is checked only at
+ * vertices whose creases are all assigned.
  */
 export function localFlatFoldability(cp: FoldFile, tol = 1e-6): VertexViolation[] {
-  const incident = new Map<number, { angle: number; a: "M" | "V" }[]>();
+  const incident = new Map<number, { angle: number; a: "M" | "V" | "U" }[]>();
   const boundary = new Set<number>();
   cp.edges_vertices.forEach(([u, v], i) => {
     const as = cp.edges_assignment?.[i] ?? "U";
@@ -28,8 +30,8 @@ export function localFlatFoldability(cp: FoldFile, tol = 1e-6): VertexViolation[
       return;
     }
     const fa = cp.edges_foldAngle?.[i];
-    const folded = fa === undefined ? as === "M" || as === "V" : Math.abs(Math.abs(fa) - 180) < 1e-6;
-    if (!folded || (as !== "M" && as !== "V")) return;
+    const folded = fa === undefined ? as === "M" || as === "V" || as === "U" : Math.abs(Math.abs(fa) - 180) < 1e-6;
+    if (!folded || (as !== "M" && as !== "V" && as !== "U")) return;
     for (const [p, q] of [
       [u, v],
       [v, u],
@@ -54,10 +56,11 @@ export function localFlatFoldability(cp: FoldFile, tol = 1e-6): VertexViolation[
       alt += i % 2 === 0 ? sector : -sector;
     }
     const m = list.filter((e) => e.a === "M").length;
-    const vv = list.length - m;
+    const vv = list.filter((e) => e.a === "V").length;
+    const assigned = m + vv === list.length;
     const kaw = list.length % 2 === 1 ? Math.PI : Math.abs(alt);
     const mae = Math.abs(m - vv);
-    if (kaw > tol || mae !== 2) {
+    if (kaw > tol || (assigned && mae !== 2)) {
       const c = cp.vertices_coords[v]!;
       out.push({ vertex: v, coords: [c[0]!, c[1]!], kawasaki: kaw, maekawa: mae });
     }

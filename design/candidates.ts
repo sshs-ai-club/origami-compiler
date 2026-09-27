@@ -1,11 +1,15 @@
 // DesignSpec -> ranked candidates, each with an honest step estimate.
 //
-// What a v0 candidate is: a stick figure, a verified grid packing of it, and a
-// step estimate. What it is NOT yet: a crease pattern. Molecule filling
-// (packing -> creases) is Plan B / M5 work and is not implemented, so
-// `base_cp` is null and `cp_status` says why. The UI must show this.
+// A candidate is a stick figure, a verified grid packing of it, BP Studio's
+// box-pleating layout of that packing, and a step estimate. It carries a
+// crease pattern (`base_cp`) only when flat-folder has verified one; otherwise
+// `base_cp` is null and `crease_pattern` says which vertices are unfinished.
+// The UI must show which.
 
+import type { FoldFile } from "../engine/foldfile.ts";
 import type { DesignSpec } from "../intent/spec.ts";
+import { type Blueprint, layoutBlueprint } from "./blueprint.ts";
+import { type CreasePatternResult, creasePatternFromBlueprint } from "./complete.ts";
 import { type StepEstimate, estimateSteps } from "./estimate.ts";
 import { type Packing, type Symmetry, packTree } from "./packing.ts";
 import { type Route, route } from "./router.ts";
@@ -20,7 +24,11 @@ export interface Candidate {
   flaps: number;
   tree: FlapTree;
   packing: Packing;
-  base_cp: null;
+  /** BP Studio's layout: hinges, ridges, border. */
+  blueprint: Blueprint;
+  crease_pattern: CreasePatternResult;
+  /** The flat-folder-verified crease pattern, or null. */
+  base_cp: FoldFile | null;
   cp_status: string;
   shaping_plan: ShapingOp[];
   est_steps: StepEstimate;
@@ -40,7 +48,6 @@ export interface DesignResult {
 
 const DEFAULT_GRIDS = [16, 24, 32];
 const SYMMETRIES: Symmetry[] = ["diagonal", "book"];
-const CP_STATUS = "not generated: molecule filling (packing -> crease pattern) is not implemented yet (PLANS.md Plan B, ROADMAP M5)";
 
 export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandidates = 4): DesignResult {
   const r = route(spec, trees.length > 0);
@@ -72,6 +79,9 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
         rejected.push({ id, reason: `no symmetric grid packing on ${N}×${N}` });
         continue;
       }
+      const blueprint = layoutBlueprint(tree, best);
+      const crease_pattern = creasePatternFromBlueprint(blueprint);
+      const verified = crease_pattern.status === "verified";
       const notes: string[] = [];
       if (best.budget_hit) notes.push("packing search hit its node budget; a slightly larger scale may exist");
       if (best.scale < 1) notes.push(`flaps are under one grid square per tree unit (scale ${best.scale.toFixed(2)}): too fine to fold on ${N}×${N}`);
@@ -86,19 +96,31 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
         flaps: leaves(tree).length,
         tree,
         packing: best,
-        base_cp: null,
-        cp_status: CP_STATUS,
+        blueprint,
+        crease_pattern,
+        base_cp: verified ? crease_pattern.cp : null,
+        cp_status: verified
+          ? `verified by flat-folder (${crease_pattern.states === "1" ? "at least one" : crease_pattern.states} flat-folded state${crease_pattern.states === "1" ? "" : "s"})`
+          : `incomplete: ${crease_pattern.reason}`,
         shaping_plan: tree.shaping,
         est_steps: est,
         paper_spec: { size_cm: size, grid_n: N, sheet: "square", grid_square_cm: size ? Math.round((size / N) * 100) / 100 : null },
         within_budget: within,
-        confidence: best.scale >= 1 ? 0.3 : 0.1,
+        confidence: verified ? 0.6 : best.scale >= 1 ? 0.3 : 0.1,
         notes,
       } });
     }
   });
 
-  // Requested detail level first, then the most paper-efficient packing.
-  found.sort((a, b) => a.rank - b.rank || b.c.packing.scale - a.c.packing.scale);
+  // Requested detail level first, then paper efficiency: flap length as a fraction of the
+  // sheet (scale / N; scale alone grows with N). Within 2%, the coarser grid wins —
+  // bigger squares, fewer steps, same model.
+  const eff = (c: Candidate) => c.packing.scale / c.paper_spec.grid_n;
+  found.sort((a, b) => {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    const ea = eff(a.c), eb = eff(b.c);
+    if (Math.abs(ea - eb) > 0.02 * Math.max(ea, eb)) return eb - ea;
+    return a.c.paper_spec.grid_n - b.c.paper_spec.grid_n;
+  });
   return { route: r, candidates: found.slice(0, maxCandidates).map((x) => x.c), rejected };
 }

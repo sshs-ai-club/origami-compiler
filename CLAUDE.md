@@ -26,8 +26,10 @@ Output goes to `out/` (gitignored). Open `book.html` and `player.html`.
 - **No GPL dependencies.** Rabbit Ear and Creasy are GPL; the repo is MIT
   (DEPENDENCIES.md §1). Creasy is a behavioural oracle only.
 - **Never invent a layer formulation.** The engine's global stack rank is
-  valid only for states built by simple folds. Arbitrary crease patterns need
-  the flat-folder port (facewise conditions, Akitaya–Demaine–Ku 2024).
+  valid only for states built by simple folds. For any other crease pattern
+  use `engine/flatfold.ts` (flat-folder, facewise conditions).
+- **A crease pattern is done only when flat-folder verifies it.** Anything
+  else is a blueprint and must be shown as one.
 - **Base + shaping tail.** `sequencer/` sequences flat-foldable bases;
   shaping is a library estimate. Do not mix them.
 - **A step is a diagram panel.** `cost(plan) = plan.steps.length`.
@@ -57,4 +59,6 @@ diagrams/    exact step geometry -> Yoshizawa–Randlett SVG
 motion/      keyframes (rigid rotations) -> self-contained HTML player
 illustrate/  optional image-model restyling of exact diagrams (no provider)
 app/         pipeline, CLI, instruction book, video recorder
+vendor/      flat-folder solver (unmodified) and the BP Studio core bundle;
+             never edit, rebuild/copy from the pinned commit (see each README)
 ```

@@ -66,4 +66,18 @@ compute the sequence. That separation is what lets the user see honest
 numbers before committing (ARCHITECTURE.md §5).
 
 ## Status (v0)
-`router.ts`, `library.ts` (stick figures), `llm.ts` (Claude-proposed stick figures, validated), `packing.ts` (box-pleat grid packing, L∞ tree condition, symmetric search), `estimate.ts` (precrease exact, collapse/shaping placeholder constants), `candidates.ts`. **No candidate has a crease pattern yet**: molecule filling is not implemented.
+`router.ts`, `library.ts` (stick figures), `llm.ts` (Claude-proposed stick figures, validated), `packing.ts` (box-pleat grid packing, L∞ tree condition, symmetric search), `blueprint.ts` (BP Studio layout of the packing), `complete.ts` (blueprint -> crease pattern, verified by flat-folder), `estimate.ts` (precrease exact, collapse/shaping placeholder constants), `candidates.ts`.
+
+### Crease-pattern completion — the open problem
+
+BP Studio gives flap/river contours (hinges) and ridges. Inside a flap region
+nothing more is needed (the crane's blueprint is the complete preliminary base
+and verifies). Where flap regions leave paper between them, the blueprint has
+vertices where a ridge meets two hinges — degree 3, never flat-foldable. The
+leftover paper must be filled with elevation / axial-parallel creases so it
+folds into the base. Sources: Lang, *Origami Design Secrets* 2nd ed.
+ch. 13–14 (uniaxial box pleating); Lang & Tsai, *Generalized Offset
+Pythagorean Stretches*, OSME 7 (2018); Tsai, OSME 8 (2025); Lang & Demaine,
+*Facet Ordering and Crease Assignment in Uniaxial Bases*. The test for any
+completion is already in place: `creasePatternFromBlueprint` must return
+"verified", and the folded form must show one flap per leaf.

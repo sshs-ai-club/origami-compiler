@@ -183,6 +183,15 @@ validation (dev-time only, not shipped)
 
 ---
 
+## 7a. Status (2026-09-26)
+
+- **flat-folder:** done. Solver files vendored unmodified in `vendor/flat-folder/`,
+  wrapped by `engine/flatfold.ts`.
+- **BP Studio** (MIT, TypeScript): added. Its core is bundled from a pinned
+  commit into `vendor/bp-studio/core.mjs` and gives the box-pleating layout
+  (`design/blueprint.ts`). It does not produce flat-foldable crease patterns.
+- **Licence:** confirmed MIT, no GPL code (decisions.md).
+
 ## 8. Immediate actions
 
 1. **Decide the licence question in §1.** Blocks everything else.
