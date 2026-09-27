@@ -28,8 +28,11 @@ Output goes to `out/` (gitignored). Open `book.html` and `player.html`.
 - **Never invent a layer formulation.** The engine's global stack rank is
   valid only for states built by simple folds. For any other crease pattern
   use `engine/flatfold.ts` (flat-folder, facewise conditions).
-- **A crease pattern is done only when flat-folder verifies it.** Anything
-  else is a blueprint and must be shown as one.
+- **A crease pattern is done only when flat-folder verifies it** and, for a
+  designed base, its folded geometry is the intended one
+  (`design/boxpleat.ts` `uniaxialDeviation`). Anything else is a layout and
+  must be shown as one. M/V hints may speed flat-folder up; they never
+  replace its verdict.
 - **Base + shaping tail.** `sequencer/` sequences flat-foldable bases;
   shaping is a library estimate. Do not mix them.
 - **A step is a diagram panel.** `cost(plan) = plan.steps.length`.

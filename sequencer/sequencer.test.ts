@@ -4,7 +4,10 @@ import { localFlatFoldability } from "../engine/local.ts";
 import { layersAt, maxLayers } from "../engine/state.ts";
 import { dartPlan } from "./library/dart.ts";
 import { cost, replay } from "./plan.ts";
-import { divisionRounds, precreaseGrid } from "./precrease.ts";
+import { divisionRounds, precreaseBase, precreaseGrid } from "./precrease.ts";
+import { LIBRARY } from "../design/library.ts";
+import { packTree } from "../design/packing.ts";
+import { boxPleatFromGrid } from "../design/boxpleat.ts";
 import { type Domain, beamSearch } from "./search.ts";
 
 describe("grid precrease", () => {
@@ -99,4 +102,39 @@ describe("beam search skeleton", () => {
     expect(r.reachedGoal).toBe(false);
     expect(r.stopReason).not.toBe("goal");
   });
+});
+
+describe("box-pleat base precrease", () => {
+  /** Every point along each base crease (quarter-grid spacing) lies on a crease of the precreased sheet. */
+  function uncovered(plan: ReturnType<typeof precreaseBase>, lines: { a: [number, number]; b: [number, number] }[], N: number): string[] {
+    const cp = creasePattern(replay(plan).at(-1)!.after);
+    const segs = cp.edges_vertices.filter((_, i) => cp.edges_assignment![i] !== "B").map(([u, v]) => [cp.vertices_coords[u]!, cp.vertices_coords[v]!]);
+    const onSome = (p: number[]) =>
+      segs.some(([a, b]) => {
+        const cr = (b![0]! - a![0]!) * (p[1]! - a![1]!) - (b![1]! - a![1]!) * (p[0]! - a![0]!);
+        return Math.abs(cr) < 1e-9 && Math.min(a![0]!, b![0]!) - 1e-9 <= p[0]! && p[0]! <= Math.max(a![0]!, b![0]!) + 1e-9 && Math.min(a![1]!, b![1]!) - 1e-9 <= p[1]! && p[1]! <= Math.max(a![1]!, b![1]!) + 1e-9;
+      });
+    const out: string[] = [];
+    for (const l of lines) {
+      const k = Math.round(4 * Math.max(Math.abs(l.b[0] - l.a[0]), Math.abs(l.b[1] - l.a[1])));
+      for (let i = 0; i <= k; i++) {
+        const p = [(l.a[0] + ((l.b[0] - l.a[0]) * i) / k) / N, (l.a[1] + ((l.b[1] - l.a[1]) * i) / k) / N];
+        if (p[0]! <= 1e-9 || p[1]! <= 1e-9 || p[0]! >= 1 - 1e-9 || p[1]! >= 1 - 1e-9) continue; // paper edge
+        if (!onSome(p)) out.push(`(${p[0]! * N}, ${p[1]! * N})`);
+      }
+    }
+    return out;
+  }
+
+  it("realistic dragon: every crease of the verified base is precreased, and every fold replays", () => {
+    const t = LIBRARY.dragon!.find((x) => x.variant === "realistic")!;
+    const p = packTree(t, 16, "diagonal")!;
+    const r = boxPleatFromGrid(t, p.positions, 16, p.scale);
+    if (r.status !== "verified") throw new Error("fixture must verify");
+    const plan = precreaseBase(16, r.lines);
+    expect(plan.steps.length).toBeGreaterThan(precreaseGrid(16).steps.length);
+    expect(uncovered(plan, r.lines, 16)).toEqual([]);
+    // the grid alone misses the diagonals: the check can fail
+    expect(uncovered(precreaseGrid(16), r.lines, 16).length).toBeGreaterThan(0);
+  }, 120_000);
 });

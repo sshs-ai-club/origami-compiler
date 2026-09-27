@@ -14,7 +14,8 @@ import { type RenderedPlan, renderPlan, runPipeline } from "./pipeline.ts";
 import { playerHtml } from "../motion/player.ts";
 
 const USAGE = `usage:
-  origami "<request>" [--claude] [--pick N] [--out DIR]
+  origami "<request>" [--claude] [--pick N] [--complete N] [--out DIR]
+      --complete N: try completing the top N candidates into verified crease patterns (default 3, 0 = skip)
   origami demo dart [--out DIR]
   origami video <player.html> [--out FILE.webm] [--speed N]`;
 
@@ -77,9 +78,11 @@ async function main() {
   }
 
   const useClaude = bool(args, "--claude");
-  const pick = Number(flag(args, "--pick") ?? 0);
+  const pickFlag = flag(args, "--pick");
+  const pick = pickFlag === undefined ? undefined : Number(pickFlag);
+  const complete = Number(flag(args, "--complete") ?? 3);
   const request = args.join(" ");
-  const res = await runPipeline(request, { useClaude, pick });
+  const res = await runPipeline(request, { useClaude, pick, complete, progress: (m) => console.log(`...       ${m}`) });
   const dir = out ?? join("out", slug(res.spec.target_text ?? request));
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "spec.json"), json(res.spec));
@@ -93,7 +96,7 @@ async function main() {
   for (const a of s.ambiguous) console.log(`  note    ${a}`);
   console.log(`route     tier ${res.design.route.tier ?? "?"} · ${res.design.route.family} · ${res.design.route.reason}`);
   for (const c of res.design.candidates) {
-    console.log(`candidate ${c.id.padEnd(28)} ${String(c.flaps).padStart(2)} flaps · scale ${c.packing.scale.toFixed(2)} = ${((100 * c.packing.scale) / c.paper_spec.grid_n).toFixed(1)}% (${c.packing.symmetry}) · CP ${c.crease_pattern.status} · ~${c.est_steps.total} steps (${c.est_steps.precrease} exact + ${c.est_steps.collapse + c.est_steps.shaping} est.)`);
+    console.log(`candidate ${c.id.padEnd(28)} ${String(c.flaps).padStart(2)} flaps · scale ${c.packing.scale.toFixed(2)} = ${((100 * c.packing.scale) / c.paper_spec.grid_n).toFixed(1)}% (${c.packing.symmetry}) · CP ${c.completion?.status ?? "not attempted"} · ~${c.est_steps.total} steps (${c.est_steps.precrease} exact + ${c.est_steps.collapse + c.est_steps.shaping} est.)`);
   }
   for (const r of res.design.rejected) console.log(`rejected  ${r.id}: ${r.reason}`);
   for (const n of res.notes) console.log(`>> ${n}`);

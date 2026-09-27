@@ -223,3 +223,6 @@ papers/pdf/
 # origami-compiler
 node_modules/
 out/
+
+# Copyrighted reference books: keep local, never push (repo is public)
+docs/*.pdf

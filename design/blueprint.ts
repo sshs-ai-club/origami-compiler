@@ -3,7 +3,8 @@
 // ridges and stretch gadgets. Its own manual is explicit that the result is a
 // starting point, not a flat-foldable crease pattern: the axial-parallel
 // creases and the mountain/valley assignment are left to the designer. That
-// completion is design/complete.ts; foldability is checked by engine/flatfold.ts.
+// Our own completion (design/boxpleat.ts) does not use it; BP Studio is kept as
+// an independent oracle for the hinge/ridge layout (design.test.ts).
 
 import { type BlueprintOutput, blueprint as bpStudio } from "../vendor/bp-studio/core.mjs";
 import type { Vec } from "../engine/geom.ts";

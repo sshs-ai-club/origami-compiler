@@ -1,16 +1,17 @@
 // DesignSpec -> ranked candidates, each with an honest step estimate.
 //
-// A candidate is a stick figure, a verified grid packing of it, BP Studio's
-// box-pleating layout of that packing, and a step estimate. It carries a
-// crease pattern (`base_cp`) only when flat-folder has verified one; otherwise
-// `base_cp` is null and `crease_pattern` says which vertices are unfinished.
-// The UI must show which.
+// A candidate is a stick figure, a verified grid packing of it, and a step
+// estimate. Completing it into a crease pattern (design/boxpleat.ts, Lang's
+// uniaxial box pleating) is a separate, slower step — completeCandidate —
+// because every result goes through flat-folder. A candidate carries a
+// crease pattern (`base_cp`) only when flat-folder has verified one; the UI
+// must show which.
 
 import type { FoldFile } from "../engine/foldfile.ts";
 import type { DesignSpec } from "../intent/spec.ts";
-import { type Blueprint, layoutBlueprint } from "./blueprint.ts";
-import { type CreasePatternResult, creasePatternFromBlueprint } from "./complete.ts";
+import { type BoxPleatResult, boxPleatFromGrid } from "./boxpleat.ts";
 import { type StepEstimate, estimateSteps } from "./estimate.ts";
+import { precreaseBase } from "../sequencer/precrease.ts";
 import { type Packing, type Symmetry, packTree } from "./packing.ts";
 import { type Route, route } from "./router.ts";
 import { type FlapTree, type ShapingOp, leaves } from "./tree.ts";
@@ -24,9 +25,8 @@ export interface Candidate {
   flaps: number;
   tree: FlapTree;
   packing: Packing;
-  /** BP Studio's layout: hinges, ridges, border. */
-  blueprint: Blueprint;
-  crease_pattern: CreasePatternResult;
+  /** Box-pleat completion (design/boxpleat.ts); null until completeCandidate runs. */
+  completion: BoxPleatResult | null;
   /** The flat-folder-verified crease pattern, or null. */
   base_cp: FoldFile | null;
   cp_status: string;
@@ -57,7 +57,7 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
   const grids = spec.sheet.grid_n ? [spec.sheet.grid_n] : DEFAULT_GRIDS;
   const budget = spec.step_budget;
   // "About 200" tolerates a little slack; "under 200" does not.
-  const limit = budget ? (budget.approximate ? Math.round(budget.max * 1.1) : budget.max) : Infinity;
+  const limit = stepLimit(spec);
 
   const found: { rank: number; c: Candidate }[] = [];
   trees.forEach((tree, rank) => {
@@ -79,9 +79,6 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
         rejected.push({ id, reason: `no symmetric grid packing on ${N}×${N}` });
         continue;
       }
-      const blueprint = layoutBlueprint(tree, best);
-      const crease_pattern = creasePatternFromBlueprint(blueprint);
-      const verified = crease_pattern.status === "verified";
       const notes: string[] = [];
       if (best.budget_hit) notes.push("packing search hit its node budget; a slightly larger scale may exist");
       if (best.scale < 1) notes.push(`flaps are under one grid square per tree unit (scale ${best.scale.toFixed(2)}): too fine to fold on ${N}×${N}`);
@@ -96,17 +93,14 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
         flaps: leaves(tree).length,
         tree,
         packing: best,
-        blueprint,
-        crease_pattern,
-        base_cp: verified ? crease_pattern.cp : null,
-        cp_status: verified
-          ? `verified by flat-folder (${crease_pattern.states === "1" ? "at least one" : crease_pattern.states} flat-folded state${crease_pattern.states === "1" ? "" : "s"})`
-          : `incomplete: ${crease_pattern.reason}`,
+        completion: null,
+        base_cp: null,
+        cp_status: "not completed yet",
         shaping_plan: tree.shaping,
         est_steps: est,
         paper_spec: { size_cm: size, grid_n: N, sheet: "square", grid_square_cm: size ? Math.round((size / N) * 100) / 100 : null },
         within_budget: within,
-        confidence: verified ? 0.6 : best.scale >= 1 ? 0.3 : 0.1,
+        confidence: best.scale >= 1 ? 0.3 : 0.1,
         notes,
       } });
     }
@@ -123,4 +117,36 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
     return a.c.paper_spec.grid_n - b.c.paper_spec.grid_n;
   });
   return { route: r, candidates: found.slice(0, maxCandidates).map((x) => x.c), rejected };
+}
+
+/**
+ * Complete a candidate's packing into a crease pattern (Lang's uniaxial box
+ * pleating) and verify it with flat-folder. Slow: seconds to minutes, almost
+ * all of it in flat-folder's layer search.
+ */
+export function completeCandidate(c: Candidate, opts: { maxAttempts?: number; stepLimit?: number } = {}): Candidate {
+  const r = boxPleatFromGrid(c.tree, c.packing.positions, c.packing.grid_n, c.packing.scale, { maxAttempts: opts.maxAttempts });
+  if (r.status !== "verified") return { ...c, completion: r, base_cp: null, cp_status: `incomplete: ${r.reason}`, confidence: Math.min(c.confidence, 0.2) };
+  const notes = [...c.notes];
+  const grown = Object.entries(r.expanded);
+  if (grown.length) notes.push(`unused paper absorbed into ${grown.map(([f, k]) => `${f} (+${k} squares)`).join(", ")}: those flaps get extra layers, not extra length`);
+  // With the base known, precreasing is exact: grid, half-grid lines, diagonals.
+  const precrease = precreaseBase(c.packing.grid_n, r.lines).steps.length;
+  const est_steps = { ...c.est_steps, precrease, total: c.est_steps.total - c.est_steps.precrease + precrease };
+  return {
+    ...c,
+    est_steps,
+    within_budget: opts.stepLimit === undefined ? c.within_budget : est_steps.total <= opts.stepLimit,
+    completion: r,
+    base_cp: r.cp,
+    cp_status: `verified by flat-folder (${r.states === "1" ? "at least one" : r.states} flat-folded state${r.states === "1" ? "" : "s"}); Lang's uniaxial box pleating, rooted at ${r.root}`,
+    confidence: 0.6,
+    notes,
+  };
+}
+
+/** The step budget as a hard limit: "about N" tolerates 10%, "under N" does not. */
+export function stepLimit(spec: DesignSpec): number {
+  const b = spec.step_budget;
+  return b ? (b.approximate ? Math.round(b.max * 1.1) : b.max) : Infinity;
 }

@@ -158,3 +158,83 @@ export function precreaseGrid(N: number): StepPlan {
 
 /** Panels needed to precrease an N×N grid with this planner. */
 export const precreasePanels = (N: number): number => precreaseGrid(N).steps.length;
+
+/**
+ * Precreasing for a box-pleated base: the N×N grid, then every other line
+ * the base's crease pattern lies on — half-grid lines (fold crease k onto
+ * crease k+1) and 45° diagonals (fold a grid line onto a perpendicular one).
+ * `lines` are the base's creases in grid units (x right, y up, as in the
+ * crease pattern). Each fold is a full crease-and-unfold through the flat
+ * sheet, as in Lang's box-pleated diagrams (ODS ch. 13, Bull Moose steps
+ * 1–16); some creases run longer than the base needs, and the text says so.
+ */
+export function precreaseBase(N: number, lines: readonly { a: Vec; b: Vec }[]): StepPlan {
+  const plan = precreaseGrid(N);
+  const steps = plan.steps;
+  const push = (ops: FoldOp[], text: string, batch: Step["batch"]) =>
+    steps.push({ id: steps.length + 1, phase: "precrease", view: { rotate_deg: 0, flip: false }, ops, batch, text });
+
+  // --- half-grid lines parallel to the edges
+  const half = { x: new Set<number>(), y: new Set<number>() };
+  for (const l of lines) {
+    if (l.a[0] === l.b[0] && !Number.isInteger(l.a[0])) half.x.add(l.a[0]);
+    if (l.a[1] === l.b[1] && !Number.isInteger(l.a[1])) half.y.add(l.a[1]);
+  }
+  for (const axis of ["x", "y"] as const) {
+    const vals = [...half[axis]].sort((p, q) => p - q);
+    if (!vals.length) continue;
+    const ops: FoldOp[] = vals.map((v) => {
+      if (!Number.isInteger(2 * v)) throw new Error(`a crease at ${v} is not on the half-grid`);
+      const [lo, hi] = [Math.floor(v), Math.ceil(v)];
+      const t = v / N;
+      const reference = `the ${lo}/${N} crease to the ${hi}/${N} crease`;
+      return axis === "x"
+        ? { kind: "valley", line: [[t, 0], [t, 1]], moving: v < N / 2 ? "left" : "right", scope: "all", unfold: true, reference }
+        : { kind: "valley", line: [[0, t], [1, t]], moving: v > N / 2 ? "left" : "right", scope: "all", unfold: true, reference };
+    });
+    push(
+      ops,
+      `${ops.length === 1 ? "Fold" : `Make ${ops.length} half-width creases: fold`} ${ops.map((o) => (o as { reference: string }).reference).join("; ")}, and unfold${ops.length === 1 ? "" : " after each"}. ${axis === "x" ? "Vertical" : "Horizontal"}, halfway between two grid lines.`,
+      ops.length === 1 ? { kind: "single" } : { kind: "repeat", n: ops.length, along: axis === "x" ? "vertical" : "horizontal" },
+    );
+  }
+
+  // --- 45° diagonals: x − y = c ("rising") and x + y = c ("falling")
+  const rising = new Set<number>(), falling = new Set<number>();
+  for (const l of lines) {
+    const dx = l.b[0] - l.a[0], dy = l.b[1] - l.a[1];
+    if (dx === 0 || dy === 0) continue;
+    if (Math.abs(Math.abs(dx) - Math.abs(dy)) > 1e-9) throw new Error("a crease is neither axis-parallel nor at 45°");
+    if (Math.sign(dx) === Math.sign(dy)) rising.add(l.a[0] - l.a[1]);
+    else falling.add(l.a[0] + l.a[1]);
+  }
+  const name = (pos: number, axis: "x" | "y") => edgeName(pos, N, axis);
+  const diagonal = (kind: "rising" | "falling", c: number): FoldOp => {
+    if (!Number.isInteger(2 * c)) throw new Error(`diagonal off the half-grid (${c})`);
+    // endpoints of the line inside the square, grid units
+    const pts: Vec[] =
+      kind === "rising" ? (c >= 0 ? [[c, 0], [N, N - c]] : [[0, -c], [N + c, N]]) : c <= N ? [[c, 0], [0, c]] : [[N, c - N], [c - N, N]];
+    // Reflection across the line swaps a vertical line with a horizontal one: that is the reference.
+    let reference: string;
+    if (kind === "rising") reference = c >= 0 ? `the bottom edge to the ${name(c, "x")}` : `the left edge to the ${name(-c, "y")}`;
+    else reference = c <= N ? `the bottom edge to the ${name(c, "x")}` : `the top edge to the ${name(c - N, "x")}`;
+    // Move the smaller side (the corner the line cuts off).
+    const [a, b] = [pts[0]!, pts[1]!];
+    const corner: Vec = kind === "rising" ? (c >= 0 ? [N, 0] : [0, N]) : c <= N ? [0, 0] : [N, N];
+    const cross = (b[0] - a[0]) * (corner[1] - a[1]) - (b[1] - a[1]) * (corner[0] - a[0]);
+    return { kind: "valley", line: [[a[0] / N, a[1] / N], [b[0] / N, b[1] / N]], moving: cross > 0 ? "left" : "right", scope: "all", unfold: true, reference };
+  };
+  const PER_PANEL = 6;
+  for (const [kind, set] of [["rising", rising], ["falling", falling]] as const) {
+    const cs = [...set].sort((p, q) => p - q);
+    for (let i = 0; i < cs.length; i += PER_PANEL) {
+      const ops = cs.slice(i, i + PER_PANEL).map((c) => diagonal(kind, c));
+      push(
+        ops,
+        `${ops.length === 1 ? "Fold" : `Make ${ops.length} diagonal creases (${kind === "rising" ? "↗" : "↘"}): fold`} ${ops.map((o) => (o as { reference: string }).reference).join("; ")}, and unfold${ops.length === 1 ? "" : " after each"}. Each crease runs edge to edge through grid points; the base uses only parts of it.`,
+        ops.length === 1 ? { kind: "single" } : { kind: "repeat", n: ops.length, along: kind === "rising" ? "diagonal ↗" : "diagonal ↘" },
+      );
+    }
+  }
+  return { ...plan, title: `${N}×${N} box-pleat precrease` };
+}

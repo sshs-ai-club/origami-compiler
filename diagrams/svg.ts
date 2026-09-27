@@ -5,7 +5,7 @@
 
 import type { Vec } from "../engine/geom.ts";
 import type { FoldFile } from "../engine/foldfile.ts";
-import type { Blueprint } from "../design/blueprint.ts";
+import type { CPLine } from "../design/boxpleat.ts";
 import type { Packing } from "../design/packing.ts";
 import { type FlapTree, leaves } from "../design/tree.ts";
 import type { DiagramGeometry } from "./geometry.ts";
@@ -106,26 +106,62 @@ export function creasePatternSvg(cp: FoldFile, size = 420): string {
   return out.join("\n");
 }
 
-/** BP Studio's layout on its grid, with vertices that still need creases circled. */
-export function blueprintSvg(bp: Blueprint, violations: readonly Vec[] = [], size = 300): string {
+/**
+ * A box-pleated layout in Lang's structural colouring (ODS §13.5): hinges
+ * blue, ridges red, axial contours green, higher contours brown and lighter
+ * with elevation. Grid-unit lines on an n×n sheet; `problems` are circled.
+ */
+export function structuralSvg(lines: readonly CPLine[], n: number, problems: readonly Vec[] = [], size = 300): string {
   const T = pageTransform([0, 0, 1, 1], size, 12);
+  // same orientation as designSvg and the FOLD crease pattern (grid / n)
+  const at = (p: Vec) => T.at([p[0] / n, p[1] / n]);
   const out = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f(T.w)} ${f(T.h)}" width="${f(T.w)}" height="${f(T.h)}">`, `<rect width="100%" height="100%" fill="#fff"/>`];
-  for (let k = 1; k < bp.grid_n; k++) {
-    const [a, b] = [T.at([k / bp.grid_n, 0]), T.at([k / bp.grid_n, 1])];
-    const [c, d] = [T.at([0, k / bp.grid_n]), T.at([1, k / bp.grid_n])];
-    out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#eceff1" stroke-width="0.6"/><line x1="${f(c[0])}" y1="${f(c[1])}" x2="${f(d[0])}" y2="${f(d[1])}" stroke="#eceff1" stroke-width="0.6"/>`);
+  for (let k = 1; k < n; k++) {
+    const [a, b, c, d] = [at([k, 0]), at([k, n]), at([0, k]), at([n, k])];
+    out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#f1f3f5" stroke-width="0.5"/><line x1="${f(c[0])}" y1="${f(c[1])}" x2="${f(d[0])}" y2="${f(d[1])}" stroke="#f1f3f5" stroke-width="0.5"/>`);
   }
-  const col = { border: PALETTE.edge, ridge: PALETTE.mountain, hinge: PALETTE.valley };
-  for (const l of bp.lines) {
-    const [a, b] = [T.at(l.a), T.at(l.b)];
-    out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${col[l.role]}" stroke-width="${l.role === "border" ? 1.6 : 1.2}"/>`);
+  const maxE = Math.max(1, ...lines.map((l) => l.elevation ?? 0));
+  const colour = (l: CPLine) =>
+    l.role === "hinge" ? "#1f5fbf" : l.role === "ridge" ? "#d92d20" : l.elevation === 0 ? "#2f9e44" : shade("#8a5a2b", "#e3c9a8", (l.elevation ?? 0) / maxE);
+  const order = { contour: 0, hinge: 1, ridge: 2 } as const;
+  for (const l of [...lines].sort((x, y) => order[x.role] - order[y.role])) {
+    const [a, b] = [at(l.a), at(l.b)];
+    out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${colour(l)}" stroke-width="${l.role === "contour" ? 0.9 : 1.2}" stroke-linecap="round"/>`);
   }
-  for (const v of violations) {
-    const [x, y] = T.at(v);
+  const [p0, p1] = [at([0, 0]), at([n, n])];
+  out.push(`<rect x="${f(Math.min(p0[0], p1[0]))}" y="${f(Math.min(p0[1], p1[1]))}" width="${f(Math.abs(p1[0] - p0[0]))}" height="${f(Math.abs(p1[1] - p0[1]))}" fill="none" stroke="${PALETTE.edge}" stroke-width="1.6"/>`);
+  for (const v of problems) {
+    const [x, y] = at(v);
     out.push(`<circle cx="${f(x)}" cy="${f(y)}" r="5" fill="none" stroke="#d92d20" stroke-width="1.6"/>`);
   }
   out.push("</svg>");
   return out.join("\n");
+}
+
+/**
+ * X-ray of a folded state (Lang's convention, ODS Fig 13.7): every crease of
+ * every layer drawn where it lands, in the colour of its structural role when
+ * `roleOf` is given. Geometry comes from flat-folder's folded coordinates.
+ */
+export function foldedXraySvg(folded: FoldFile, roleOf?: (edge: number) => CPLine["role"] | "border", size = 300): string {
+  const V = folded.vertices_coords;
+  const xs = V.map((v) => v[0]!), ys = V.map((v) => v[1]!);
+  const T = pageTransform([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], size, 12);
+  const out = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f(T.w)} ${f(T.h)}" width="${f(T.w)}" height="${f(T.h)}">`, `<rect width="100%" height="100%" fill="#fff"/>`];
+  const col = { hinge: "#1f5fbf", ridge: "#d92d20", contour: "#2f9e44", border: PALETTE.edge };
+  folded.edges_vertices.forEach(([u, v], i) => {
+    const [a, b] = [T.at(V[u] as unknown as Vec), T.at(V[v] as unknown as Vec)];
+    const role = roleOf?.(i) ?? (folded.edges_assignment?.[i] === "B" ? "border" : "contour");
+    out.push(`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${col[role]}" stroke-width="${role === "border" ? 1.1 : 0.7}" stroke-opacity="0.55"/>`);
+  });
+  out.push("</svg>");
+  return out.join("\n");
+}
+
+/** Linear blend of two #rrggbb colours (plain hex: every SVG renderer reads it). */
+function shade(from: string, to: string, t: number): string {
+  const c = (h: string, k: number) => parseInt(h.slice(1 + 2 * k, 3 + 2 * k), 16);
+  return `#${[0, 1, 2].map((k) => Math.round(c(from, k) + (c(to, k) - c(from, k)) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join("")}`;
 }
 
 /** Stick figure (left) and its grid packing (right). */
