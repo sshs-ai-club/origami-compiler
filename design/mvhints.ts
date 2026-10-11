@@ -8,19 +8,23 @@
 // flat-folder (and uniaxialDeviation in boxPleatFromGrid), never by the hint.
 //
 // What is PROVED and what is EMPIRICAL:
-//  - "one" (a single crease fixed to M) is lossless. Turning a flat folding
-//    over swaps every M and V and reverses the layer order without moving any
-//    crease, so the folded geometry (hence uniaxialDeviation) is unchanged.
-//    Any valid folding therefore has a mirror in which a chosen crease is M,
-//    provided that crease is folded in every valid folding. Every line of our
-//    crease patterns is: solveFlatFold treats "U" as "M or V" and only drops
-//    edges the caller marks "F", which we never do. Fixing TWO creases is not
-//    covered by this argument.
-//  - "lang", "peaks", "troughs", "flaptroughs" are heuristics (Lang, ODS 2nd
-//    ed. §13.5 p. 599, calls the contour rule an approximation). Their speed
-//    and safety are empirical: see app/hintbench.ts.
+//  - "one" fixes EXACTLY ONE planar FOLD edge to M (cpFor builds the unhinted
+//    crease pattern, then sets edges_assignment[k] for a single non-boundary
+//    edge k; a CPLine is not used because planarisation splits it at every
+//    crossing and each piece would inherit the assignment). That is lossless:
+//    turning a flat folding over swaps every M and V and reverses the layer
+//    order without moving any crease, so the folded geometry (hence
+//    uniaxialDeviation) is unchanged. Hence if any valid folding exists, one
+//    exists in which edge k is M, provided k is folded in every valid folding.
+//    It is: solveFlatFold treats "U" as "M or V" and only drops edges the caller
+//    marks "F", which we never do. Fixing TWO edges is not covered (a valid
+//    folding may flip M/V along a straight line at a degree-4 vertex).
+//  - "lang", "peaks", "troughs", "flaptroughs" assign whole CPLines, i.e. every
+//    planar piece of them. They are heuristics (Lang, ODS 2nd ed. §13.5 p. 599,
+//    calls the contour rule an approximation); their speed and safety are
+//    empirical: see app/hintbench.ts.
 
-import type { Assignment } from "../engine/foldfile.ts";
+import type { Assignment, FoldFile } from "../engine/foldfile.ts";
 import { type FlatFoldResult, solveFlatFold } from "../engine/flatfold.ts";
 import type { CPLine, RegionMap } from "./boxpleat.ts";
 import { toFold } from "./boxpleat.ts";
@@ -29,20 +33,31 @@ export type HintStrategy = "lang" | "peaks" | "troughs" | "flaptroughs" | "one" 
 export type Hint = "M" | "V" | "U";
 
 /**
- * The crease fixed by "one": the longest line (ties: first). Any line works
- * (see the proof above: all lines are folded in every valid folding); the
- * longest is the one that constrains the most faces, so it prunes best.
+ * The planar FOLD edge fixed by "one": the longest non-boundary edge (ties:
+ * first). Any non-boundary edge is valid (see the proof above); the longest
+ * touches the most faces, so it prunes best. -1 if there is none.
  */
-export function oneIndex(lines: readonly CPLine[]): number {
+export function oneEdge(cp: FoldFile): number {
   let best = -1, bestLen = -1;
-  lines.forEach((l, i) => {
-    const len = Math.hypot(l.b[0] - l.a[0], l.b[1] - l.a[1]);
-    if (len > bestLen + 1e-9) {
+  cp.edges_vertices.forEach(([u, v], i) => {
+    if (cp.edges_assignment?.[i] === "B") return;
+    const a = cp.vertices_coords[u!]!, b = cp.vertices_coords[v!]!;
+    const len = Math.hypot(b[0]! - a[0]!, b[1]! - a[1]!);
+    if (len > bestLen + 1e-12) {
       best = i;
       bestLen = len;
     }
   });
   return best;
+}
+
+/** The FOLD crease pattern a strategy hands to flat-folder (see the header for "one"). */
+export function cpFor(lines: readonly CPLine[], n: number, strategy: HintStrategy, map?: RegionMap): FoldFile {
+  if (strategy !== "one") return toFold(lines, n, hintFor(lines, strategy, map));
+  const cp = toFold(lines, n);
+  const k = oneEdge(cp);
+  if (k >= 0) cp.edges_assignment![k] = "M";
+  return cp;
 }
 
 /** True when both cells beside a line (that lie on the sheet) belong to flap regions. */
@@ -62,7 +77,7 @@ function insideFlaps(l: CPLine, map: RegionMap): boolean {
   return seen > 0;
 }
 
-/** One hint per line. */
+/** One hint per line (every planar piece of a line inherits it). "one" is edge-level: see cpFor. */
 export function hintFor(lines: readonly CPLine[], strategy: HintStrategy, map?: RegionMap): Hint[] {
   const out: Hint[] = lines.map(() => "U");
   switch (strategy) {
@@ -88,11 +103,9 @@ export function hintFor(lines: readonly CPLine[], strategy: HintStrategy, map?: 
         if (l.role === "contour" && !l.peak && (!map || insideFlaps(l, map))) out[i] = "M";
       });
       break;
-    case "one": {
-      const k = oneIndex(lines);
-      if (k >= 0) out[k] = "M";
+    case "one":
+      // Edge-level, not line-level: see cpFor. Nothing is assigned per line.
       break;
-    }
   }
   return out;
 }
@@ -147,8 +160,7 @@ export function solveGraded(
   let used: HintStrategy = "none";
   for (const raw of ladder) {
     const rung: Rung = typeof raw === "string" ? { strategy: raw } : raw;
-    const hint = rung.hint ?? hintFor(lines, rung.strategy, opts.map);
-    const cp = toFold(lines, n, hint);
+    const cp = rung.hint ? toFold(lines, n, rung.hint) : cpFor(lines, n, rung.strategy, opts.map);
     const limit = rung.edgeLimit ?? (rung.strategy === "none" || rung.strategy === "one" ? free : Infinity);
     if (cp.edges_vertices.length > limit) continue;
     const t0 = performance.now();

@@ -15,11 +15,11 @@
 
 import { parseRequest } from "../intent/rules.ts";
 import { solveFlatFold } from "../engine/flatfold.ts";
-import { boxPleatFromGrid, buildRegions, fillGaps, gridTree, toFold, uniaxialDeviation } from "../design/boxpleat.ts";
+import { boxPleatFromGrid, buildRegions, fillGaps, gridTree, uniaxialDeviation } from "../design/boxpleat.ts";
 import type { CPLine, Pt } from "../design/boxpleat.ts";
 import { generateCandidates } from "../design/candidates.ts";
 import { LIBRARY, variantsFor } from "../design/library.ts";
-import { agreement, assignmentOf, hintFor } from "../design/mvhints.ts";
+import { agreement, assignmentOf, cpFor, hintFor } from "../design/mvhints.ts";
 import type { HintStrategy } from "../design/mvhints.ts";
 import { packTree } from "../design/packing.ts";
 import type { FlapTree } from "../design/tree.ts";
@@ -110,9 +110,9 @@ for (const cs of cases()) {
   const tips = Object.keys(cs.tips).map((k) => cs.tips[k]!);
   for (const strategy of STRATEGIES) {
     const hint = hintFor(lines, strategy, filled);
-    const cp = toFold(lines, cs.n, hint);
+    const cp = cpFor(lines, cs.n, strategy, filled);
     const edges = cp.edges_vertices.length;
-    const assigned = hint.filter((h) => h !== "U").length;
+    const assigned = strategy === "one" ? 1 : hint.filter((h) => h !== "U").length;
     if (assigned === 0 && strategy !== "none") {
       console.log(`${pad(cs.name, 24)}${pad(edges, 6)}${pad(strategy, 12)}${pad("no creases to assign", 22)}`);
       continue;
@@ -129,13 +129,13 @@ for (const cs of cases()) {
       const dev = uniaxialDeviation(lines, cs.n, tips, r.cp, r.folded);
       verdict = dev < 1e-9 ? "ok" : `ok but deviates ${dev.toFixed(3)}`;
     } else verdict = `refuted (${r.stage})`;
-    const agr = agreement(hint, solution);
+    const agr = agreement(hint, solution); // "one" is edge-level, no per-line hint: shows "-"
     const tot = totals.get(strategy) ?? { ok: 0, refuted: 0, ms: 0 };
     if (r.ok) tot.ok++;
     else tot.refuted++;
     tot.ms += ms;
     totals.set(strategy, tot);
-    console.log(`${pad(cs.name, 24)}${pad(edges, 6)}${pad(strategy, 12)}${pad(verdict, 22)}${pad(ms, 8)}${assigned ? `${agr.agree}/${agr.of}` : "-"}`);
+    console.log(`${pad(cs.name, 24)}${pad(edges, 6)}${pad(strategy, 12)}${pad(verdict, 22)}${pad(ms, 8)}${strategy !== "one" && assigned ? `${agr.agree}/${agr.of}` : "-"}`);
   }
 }
 console.log("\nTotals over the patterns that completed (empirical):");

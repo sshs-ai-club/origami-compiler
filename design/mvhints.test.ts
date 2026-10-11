@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { solveFlatFold } from "../engine/flatfold.ts";
 import { boxPleatFromGrid, toFold, uniaxialDeviation } from "./boxpleat.ts";
 import { LIBRARY } from "./library.ts";
-import { agreement, assignmentOf, hintFor, oneIndex, solveGraded } from "./mvhints.ts";
+import { agreement, assignmentOf, cpFor, hintFor, oneEdge, solveGraded } from "./mvhints.ts";
 import { packTree } from "./packing.ts";
 import type { FlapTree } from "./tree.ts";
 
@@ -52,14 +52,18 @@ describe("hintFor", () => {
     expect(hintFor(lines, "none").every((x) => x === "U")).toBe(true);
   });
 
-  it("one: exactly one crease assigned", () => {
-    const h = hintFor(lines, "one");
-    expect(h.filter((x) => x !== "U")).toHaveLength(1);
-    expect(h[oneIndex(lines)]).toBe("M");
+  it("one: the FOLD handed to flat-folder has exactly one assigned non-boundary edge", () => {
+    const cp = cpFor(lines, 6, "one");
+    const assigned = cp.edges_assignment!.filter((a) => a === "M" || a === "V");
+    expect(assigned).toEqual(["M"]);
+    expect(cp.edges_assignment![oneEdge(cp)]).toBe("M");
+    expect(hintFor(lines, "one").every((x) => x === "U")).toBe(true);
+    // a heuristic strategy, by contrast, assigns every planar piece of its lines
+    expect(cpFor(lines, 6, "troughs").edges_assignment!.filter((a) => a === "M").length).toBeGreaterThan(1);
   });
 
   it("an explicit per-line assignment reaches the FOLD file; booleans behave as before", () => {
-    const asg = hintFor(lines, "one");
+    const asg = hintFor(lines, "troughs");
     const cp = toFold(lines, 6, asg);
     expect(cp.edges_assignment!.filter((a) => a === "M" || a === "V").length).toBeGreaterThanOrEqual(1);
     const lang = toFold(lines, 6, true).edges_assignment!.filter((a) => a === "M" || a === "V").length;
@@ -68,16 +72,27 @@ describe("hintFor", () => {
   });
 });
 
-describe("mirror property (why the single-crease rung is lossless)", () => {
-  it("SIX: any crease may be forced to the opposite of the unhinted solution; still folds, same geometry", () => {
-    const base = solveFlatFold(toFold(lines, 6));
+describe("mirror property (why the single-edge rung is lossless)", () => {
+  it("SIX: any one planar edge may be forced to the opposite of the unhinted solution; still folds, same geometry", () => {
+    const cp0 = toFold(lines, 6);
+    const base = solveFlatFold(cp0);
     if (!base.ok) throw new Error("fixture must solve unhinted");
-    const found = assignmentOf(lines, 6, base.cp);
-    expect(found.every((x) => x !== "U")).toBe(true);
-    for (const c of [0, oneIndex(lines), lines.length - 1]) {
-      const hint = lines.map((_, i) => (i === c ? (found[c] === "M" ? "V" : "M") : "U")) as ("M" | "V" | "U")[];
-      const r = solveFlatFold(toFold(lines, 6, hint));
-      expect(r.ok, `crease ${c}`).toBe(true);
+    // the solved assignment of planar edge k, found by its endpoints
+    const solved = (k: number) => {
+      const [u, v] = cp0.edges_vertices[k]!;
+      const pt = (c: number[]) => base.cp.vertices_coords.findIndex((q) => Math.hypot(q[0]! - c[0]!, q[1]! - c[1]!) < 1e-9);
+      const [a, b] = [pt(cp0.vertices_coords[u!]!), pt(cp0.vertices_coords[v!]!)];
+      const e = base.cp.edges_vertices.findIndex(([x, y]) => (x === a && y === b) || (x === b && y === a));
+      return base.cp.edges_assignment![e]!;
+    };
+    const free = cp0.edges_assignment!.map((a, i) => (a === "B" ? -1 : i)).filter((i) => i >= 0);
+    for (const k of [free[0]!, oneEdge(cp0), free[free.length - 1]!]) {
+      expect(["M", "V"]).toContain(solved(k));
+      const cp = toFold(lines, 6);
+      cp.edges_assignment![k] = solved(k) === "M" ? "V" : "M";
+      expect(cp.edges_assignment!.filter((a) => a === "M" || a === "V")).toHaveLength(1);
+      const r = solveFlatFold(cp);
+      expect(r.ok, `edge ${k}`).toBe(true);
       if (r.ok) expect(uniaxialDeviation(lines, 6, tipList, r.cp, r.folded)).toBeLessThan(1e-9);
     }
   });
