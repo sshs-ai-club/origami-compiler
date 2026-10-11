@@ -26,9 +26,17 @@
 // linked wherever two faces meet: that union IS the bouncing. Elevation is
 // the breadth-first distance (in half-grid steps) from the tip classes —
 // Lang's "launch the axials, then add midpoints between them" — and must
-// change by exactly one half-step between neighbouring contours; where it
-// cannot, the design needs a level shifter (§14.1) and is reported, not
-// guessed.
+// change by exactly one half-step between neighbouring contours.
+//
+// Invariant: with integer tips and lengths every ridge between perpendicular
+// faces runs at 45 degrees through an integer point, so colouring contour
+// (face, u) by 2u mod 2 is a proper 2-colouring with all tips colour 0. The
+// steps are therefore exactly one half-step everywhere and every contour
+// crease has elevation - u an integer. A parity failure is an internal error
+// (input off the grid) and is reported, not guessed. Lang's level shifter
+// (ODS Fig 14.5) moves a contour by a whole unit, which preserves parity; it
+// is deferred until forced axials other than tips exist (plan-view midline,
+// §14.1), which this code does not create.
 //
 // Nothing here claims foldability. boxPleatFromGrid hands every result to
 // engine/local.ts (Kawasaki) and engine/flatfold.ts (flat-folder); only what
@@ -418,6 +426,45 @@ export function skeletonOfCells(cells: readonly string[]): Seg[] {
 
 // -------------------------------------------------- step 3: contours and elevation
 
+/** Reason for a contour parity failure; see the header: it cannot happen on the grid. */
+const PARITY_BROKEN = "internal: contour parity broken (impossible for integer tips/lengths; input off the grid)";
+
+/**
+ * Contour elevations as breadth-first distance (half-grid steps) from the
+ * source classes over `adj`. `steps` are the neighbouring-contour pairs that
+ * must differ by exactly one step. `bad` lists steps whose ends are not
+ * reached from a source ("unreached") or are not exactly one step apart
+ * ("parity"); `index` is the position in `steps`. Pure.
+ */
+export function contourElevations(
+  adj: Map<number, Set<number>>,
+  sources: number[],
+  steps: [number, number][],
+): { H: Map<number, number>; bad: { step: [number, number]; kind: "parity" | "unreached"; index: number }[] } {
+  const H = new Map<number, number>();
+  let frontier: number[] = [];
+  for (const c of sources) if (!H.has(c)) {
+    H.set(c, 0);
+    frontier.push(c);
+  }
+  // Lang's "add a contour halfway between equal ones, repeat": breadth-first distance.
+  for (let d = 1; frontier.length; d++) {
+    const next: number[] = [];
+    for (const c of frontier) for (const y of adj.get(c) ?? []) if (!H.has(y)) {
+      H.set(y, d);
+      next.push(y);
+    }
+    frontier = next;
+  }
+  const bad: { step: [number, number]; kind: "parity" | "unreached"; index: number }[] = [];
+  steps.forEach(([x, y], index) => {
+    const hx = H.get(x), hy = H.get(y);
+    if (hx === undefined || hy === undefined) bad.push({ step: [x, y], kind: "unreached", index });
+    else if (Math.abs(hx - hy) !== 1) bad.push({ step: [x, y], kind: "parity", index });
+  });
+  return { H, bad };
+}
+
 /** Hinges, ridges and contours of a map whose paper is fully assigned. */
 export function completeRegions(map: RegionMap): Completion {
   const { n, cell, regions } = map;
@@ -488,7 +535,7 @@ export function completeRegions(map: RegionMap): Completion {
       if (sorted[i + 1]! - sorted[i]! !== 0.5) continue;
       const x = cls(nodeId.get(`${f}|${sorted[i]}`)!), y = cls(nodeId.get(`${f}|${sorted[i + 1]}`)!);
       if (x === y) {
-        conflicts.push({ at: nodeAt[nodeId.get(`${f}|${sorted[i]}`)!]!, reason: "a contour bounces back onto its own neighbour (needs a level shifter)" });
+        conflicts.push({ at: nodeAt[nodeId.get(`${f}|${sorted[i]}`)!]!, reason: PARITY_BROKEN });
         continue;
       }
       link(x, y);
@@ -497,8 +544,7 @@ export function completeRegions(map: RegionMap): Completion {
   }
 
   // axial contours: every contour through a flap tip
-  const H = new Map<number, number>(); // class -> elevation in half-grid steps
-  let frontier: number[] = [];
+  const sources: number[] = [];
   for (let t = 0; t < m.face.length; t++) {
     const r = regions[m.region[t]!]!;
     if (r.kind !== "flap") continue;
@@ -506,29 +552,12 @@ export function completeRegions(map: RegionMap): Completion {
     const v = triVerts(a, b, t & 3);
     for (const p of [v[0], v[1]]) {
       if (p[0] !== r.tip[0] || p[1] !== r.tip[1]) continue;
-      const c = cls(nodeId.get(`${m.face[t]}|${p[uAxis(t)]}`)!);
-      if (!H.has(c)) {
-        H.set(c, 0);
-        frontier.push(c);
-      }
+      sources.push(cls(nodeId.get(`${m.face[t]}|${p[uAxis(t)]}`)!));
     }
   }
-  // Lang's "add a contour halfway between equal ones, repeat": breadth-first distance.
-  for (let d = 1; frontier.length; d++) {
-    const next: number[] = [];
-    for (const c of frontier) for (const y of adj.get(c) ?? []) if (!H.has(y)) {
-      H.set(y, d);
-      next.push(y);
-    }
-    frontier = next;
-  }
-  for (const [x, y] of steps) {
-    const hx = H.get(cls(x)), hy = H.get(cls(y));
-    if (hx === undefined || hy === undefined) {
-      conflicts.push({ at: nodeAt[x]!, reason: "contour not connected to any flap tip" });
-      continue;
-    }
-    if (Math.abs(hx - hy) !== 1) conflicts.push({ at: nodeAt[x]!, reason: `contours ${hx / 2} and ${hy / 2} are half a unit apart (parity: needs a level shifter, §14.1–14.3)` });
+  const { H, bad } = contourElevations(adj, sources, steps.map(([x, y]) => [cls(x), cls(y)] as [number, number]));
+  for (const { index, kind } of bad) {
+    conflicts.push({ at: nodeAt[steps[index]![0]]!, reason: kind === "unreached" ? "contour not connected to any flap tip" : PARITY_BROKEN });
   }
 
   // creases
