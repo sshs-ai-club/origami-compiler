@@ -117,6 +117,8 @@ describe("selectConstants", () => {
     expect(selectConstants(fitted(11)).basis).toMatch(/placeholder/);
     const s = selectConstants(fitted(12));
     expect(s.basis).toMatch(/fitted on 12 published sequences \(2027-01-01\)/);
+    expect(s.basis).toMatch(/unvalidated/);
+    expect(selectConstants(fitted(20)).basis).not.toMatch(/unvalidated/);
     expect(s.collapse_base).toBe(11);
     expect(s.c1).toBe(5);
     expect(s.c2).toBe(3);

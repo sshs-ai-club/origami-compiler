@@ -776,9 +776,11 @@ export function boxPleatFromGrid(
     // The contour hint is Lang's approximation: flat-folder is exact but slow on
     // uniaxial bases without it, so the ladder (design/mvhints.ts) falls back from
     // a refuted hint to weaker ones, the unhinted rungs only on small patterns.
-    const { r, used } = solveGraded(done.lines, n, opts.ladder, { map: filled, unhintedEdgeLimit: opts.unhintedEdgeLimit });
+    const { r, used, skipped, limit } = solveGraded(done.lines, n, opts.ladder, { map: filled, unhintedEdgeLimit: opts.unhintedEdgeLimit });
     if (!r.ok) {
-      const reason = `${tag}: flat-folder: ${r.reason}`;
+      // Skipped rungs mean the search was not exhaustive: say so.
+      const notTried = skipped.length ? `; not tried (over ${limit} edges): ${skipped.join(", ")}` : "";
+      const reason = `${tag}: flat-folder: ${r.reason}${notTried}`;
       reasons.push(reason);
       if (!best) best = { lines: done.lines, problems: [], reason };
       continue;

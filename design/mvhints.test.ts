@@ -119,6 +119,13 @@ describe("solveGraded", () => {
     expect(g.tried.map((t) => t.strategy)).toEqual(["lang"]);
     const skipped = solveGraded(lines, 6, [{ strategy: "lang", edgeLimit: 1 }, "none"]);
     expect(skipped.tried.map((t) => t.strategy)).toEqual(["none"]);
+    expect(skipped.skipped).toEqual(["lang"]);
+  });
+
+  it("a failure says which rungs were skipped for size, so it never reads as exhaustive", () => {
+    const r = boxPleatFromGrid(SIX, SIX_TIPS, 6, 1, { ladder: ["one", "none"], unhintedEdgeLimit: 1 });
+    expect(r.status).toBe("incomplete");
+    if (r.status === "incomplete") expect(r.reason).toMatch(/not tried \(over 1 edges\): one, none/);
   });
 
   it("agreement is mirror-normalised", () => {

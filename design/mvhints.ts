@@ -135,17 +135,18 @@ export interface GradedOptions {
 export const DEFAULT_LADDER: readonly Rung[] = [{ strategy: "lang" }, { strategy: "one" }, { strategy: "none" }];
 
 /**
- * EMPIRICAL, not the default: peaks was refuted on 2 of 18 benchmark patterns
- * (both fish), so it fails the "never refuted" promotion rule. But a refutation
- * costs ~15-45 ms and where lang failed peaks solved 5 of 7 in <0.5 s, while
- * `one` took 2-38 s on the bird cases. Opt in via boxPleatFromGrid's `ladder`.
+ * EMPIRICAL, not the default: peaks was refuted on 2 of 13 benchmark patterns
+ * (both fish), so it fails the "never refuted" promotion rule. A refutation
+ * costs ~10-35 ms. Whether it beats the single-edge `one` on the slow bird
+ * cases is unmeasured (earlier figures used a line-level `one`; re-run
+ * `app/hintbench.ts --slow`). Opt in via boxPleatFromGrid's `ladder`.
  */
 export const PEAKS_LADDER: readonly Rung[] = [{ strategy: "lang" }, { strategy: "peaks" }, { strategy: "one" }, { strategy: "none" }];
 
 /**
  * Solve with each rung in turn until flat-folder finds a layer order. A rung
  * whose hint is refuted costs its time and falls through; a rung over its edge
- * limit is skipped (not listed in `tried`). `none` (and `one`, unless given an
+ * limit is skipped (listed in `skipped`, not `tried`). `none` (and `one`, unless given an
  * explicit limit) keep `unhintedEdgeLimit`.
  */
 export function solveGraded(
@@ -153,8 +154,9 @@ export function solveGraded(
   n: number,
   ladder: readonly (Rung | HintStrategy)[] = DEFAULT_LADDER,
   opts: GradedOptions = {},
-): { r: FlatFoldResult; used: HintStrategy; tried: Tried[] } {
+): { r: FlatFoldResult; used: HintStrategy; tried: Tried[]; skipped: HintStrategy[]; limit: number } {
   const tried: Tried[] = [];
+  const skipped: HintStrategy[] = [];
   const free = opts.unhintedEdgeLimit ?? 200;
   let r: FlatFoldResult = { ok: false, stage: "input", reason: "no rung of the ladder applies at this size" };
   let used: HintStrategy = "none";
@@ -162,14 +164,17 @@ export function solveGraded(
     const rung: Rung = typeof raw === "string" ? { strategy: raw } : raw;
     const cp = rung.hint ? toFold(lines, n, rung.hint) : cpFor(lines, n, rung.strategy, opts.map);
     const limit = rung.edgeLimit ?? (rung.strategy === "none" || rung.strategy === "one" ? free : Infinity);
-    if (cp.edges_vertices.length > limit) continue;
+    if (cp.edges_vertices.length > limit) {
+      skipped.push(rung.strategy);
+      continue;
+    }
     const t0 = performance.now();
     r = solveFlatFold(cp);
     used = rung.strategy;
     tried.push({ strategy: rung.strategy, ok: r.ok, stage: r.ok ? undefined : r.stage, ms: performance.now() - t0 });
     if (r.ok) break;
   }
-  return { r, used, tried };
+  return { r, used, tried, skipped, limit: free };
 }
 
 /**

@@ -39,7 +39,9 @@ export interface SelectedConstants {
 
 export function selectConstants(fitted: FittedConstants | null): SelectedConstants {
   if (fitted && fitted.n_models >= MIN_FIT_MODELS) {
-    return { collapse_base: fitted.collapse_base, c1: fitted.c1, c2: fitted.c2, basis: `fitted on ${fitted.n_models} published sequences (${fitted.date})` };
+    // Below 20 the leave-one-out exit test (M2) cannot run, so the fit is unvalidated.
+    const unvalidated = fitted.n_models < 20 ? "; unvalidated: the leave-one-out exit test needs 20" : "";
+    return { collapse_base: fitted.collapse_base, c1: fitted.c1, c2: fitted.c2, basis: `fitted on ${fitted.n_models} published sequences (${fitted.date})${unvalidated}` };
   }
   return { collapse_base: CONSTANTS.collapse_base, c1: CONSTANTS.c1_per_flap, c2: CONSTANTS.c2_per_shaping_op, basis: CONSTANTS.status };
 }
