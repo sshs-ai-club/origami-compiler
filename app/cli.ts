@@ -17,6 +17,7 @@ const USAGE = `usage:
   origami "<request>" [--claude] [--pick N] [--complete N] [--out DIR]
       --complete N: try completing the top N candidates into verified crease patterns (default 3, 0 = skip)
   origami demo dart [--out DIR]
+  origami corpus validate | report | fit [--write] [--force]
   origami video <player.html> [--out FILE.webm] [--speed N]`;
 
 function flag(args: string[], name: string): string | undefined {
@@ -63,6 +64,12 @@ async function main() {
     const { recordPlayer } = await import("./video.ts");
     const file = await recordPlayer(player, out ?? player.replace(/player\.html$/, "fold.webm"), { speed });
     console.log(`video: ${file}`);
+    return;
+  }
+
+  if (args[0] === "corpus") {
+    const { corpusCommand } = await import("./corpus.ts");
+    process.exitCode = corpusCommand(args[1], args.slice(2));
     return;
   }
 

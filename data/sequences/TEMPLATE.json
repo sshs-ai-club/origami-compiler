@@ -1,0 +1,30 @@
+{
+  "model": "<model name>",
+  "source": "<fill in: author, book or URL, page or figure range>",
+  "paper": { "size_cm": 15, "shape": "square", "duo": false },
+  "published": false,
+  "grid_n": null,
+  "flaps": 0,
+  "shaping_ops": 0,
+  "features_note": "<fill in: anything unusual: curved folds, tessellation, wet folding, ...>",
+  "total_panels": 1,
+  "minutes": null,
+  "max_layers_final": null,
+  "steps": [
+    {
+      "panel": 1,
+      "phase": "precrease",
+      "batch": "single",
+      "primitive_folds": 1,
+      "op": "valley",
+      "line": "<fill in: which line>",
+      "reference": "exact",
+      "layers_before": 1,
+      "layers_after": 2,
+      "through_layers": 1,
+      "view_change": "none",
+      "hesitation": 0,
+      "note": ""
+    }
+  ]
+}
