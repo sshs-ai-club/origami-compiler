@@ -8,6 +8,30 @@ true when the milestone is done. "It mostly works" is not an exit test.
 
 ---
 
+## Where the pipeline stops today (2026-10-11)
+
+Measured on `npm run origami -- "I want to make a good looking horse"` (25 s):
+request → quadruped stick figure → integer grid packing → Lang box-pleated
+crease pattern → flat-folder + `uniaxialDeviation` verify the base (16×16
+failed and was reported; 24×24 verified) → 14 engine-verified precrease
+panels → one "collapse" panel with the verified end state → book + player.
+
+What is missing, in the order a folder would hit it:
+
+| Gap | What exists instead | Where it belongs |
+|---|---|---|
+| **Step-by-step collapse sequence** | One panel: "collapse along these creases" + verified end state | M4 (sequencer: non-simple operators, collapse search) |
+| **Shaping sequence** (base → horse) | A step-count estimate only | M4/M5 (shaping library, ARCHITECTURE.md §2) |
+| **Verification of the final 3D shape** | Verification stops at the flat uniaxial base (tips, lengths, contours) | After shaping exists; Origami Simulator–style 3D preview is a visual aid, never the verdict |
+| **Subject-specific stick figures** ("good looking", mane, long neck) | Generic library figure (quadruped); "good looking" is ignored by the rule parser | `--claude` stick-figure proposals exist; style/proportion → figure mapping is open |
+| **Fitted step-cost constants** | Placeholders; corpus schema, fit and leave-one-out report built (`corpus report`: 0/20) | M2: 20 published sequences transcribed by a human (`data/README.md`) |
+| **Large patterns that refute Lang's hint** | Reported "not verified" (fallback rungs skip > 200 edges) | Hint research (decisions 2026-10-11 "Graded M/V hints"); a time-bounded solver |
+| **Level shifters** | Not needed on the current grid (parity invariant) | After the plan-view midline axial (§14.1) |
+| **Asymmetric packing** | Only diagonal and book symmetry tried | Needs a decision (fish: scale 2.5 vs 1.74) |
+| **Pythagorean stretches** (§14.4) | Not implemented | Designer (M5) |
+
+---
+
 ## M0 — Foundations · Sep–Oct 2026
 
 | Who | Work |
