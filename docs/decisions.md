@@ -590,3 +590,20 @@ predicts published ones). **Corpus is human work**: an agent does not
 transcribe panel counts (miscounts would poison the ground truth).
 **Reverse if** LOO fails while in-sample passes (overfitting): add batch kinds
 before adding parameters.
+
+## 2026-10-11 — Graded M/V hints (design/mvhints.ts); supersedes the all-or-nothing retry
+
+A flat-folder hint is a hard constraint: one wrong crease refutes a foldable
+pattern. **Decision.** Solving walks a ladder, `lang → one → none` ("one" and
+"none" only up to 200 edges); patterns that exhaust it are "not verified".
+**Proved:** fixing exactly one planar FOLD edge to M is lossless — turning a
+flat folding over swaps every M/V and reverses the layers without moving a
+crease, so `uniaxialDeviation` is unchanged, and every non-boundary edge folds
+(flat-folder reads "U" as M-or-V). Fixing two or more edges, or a whole merged
+line (planarisation splits it), is not covered. **Empirical** (app/hintbench.ts,
+13 patterns, one machine): Lang's contour rule refuted on 5, peaks-only on 2,
+troughs on 4; every refutation took 10–35 ms; "one" and "none" never refuted.
+`PEAKS_LADDER` is exported, not default (refuted twice). No whole-line hint is
+known to be always right. **Open:** flat-folder is synchronous, so the edge
+limit is not a time bound (bird 12 diagonal unhinted: 193 s); `--slow` rows
+need re-measuring with the edge-level "one".
