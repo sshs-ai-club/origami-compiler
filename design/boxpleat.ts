@@ -42,9 +42,10 @@
 // engine/local.ts (Kawasaki) and engine/flatfold.ts (flat-folder); only what
 // flat-folder verifies is returned as "verified".
 
-import { type FlatFoldResult, foldFromLines, solveFlatFold } from "../engine/flatfold.ts";
+import { foldFromLines } from "../engine/flatfold.ts";
 import type { Assignment, FoldFile } from "../engine/foldfile.ts";
 import { localFlatFoldability } from "../engine/local.ts";
+import { type HintStrategy, type Rung, solveGraded } from "./mvhints.ts";
 import { type FlapTree, leaves } from "./tree.ts";
 
 export type Pt = [number, number];
@@ -649,6 +650,8 @@ export type BoxPleatResult =
       expanded: Record<string, number>;
       states: string;
       attempts: number;
+      /** Which M/V hint rung of design/mvhints.ts flat-folder solved with. */
+      hint?: HintStrategy;
     }
   | {
       status: "incomplete";
@@ -706,7 +709,7 @@ export function boxPleatFromGrid(
   tips: Record<string, Pt>,
   n: number,
   scale = 1,
-  opts: { maxAttempts?: number; unhintedEdgeLimit?: number } = {},
+  opts: { maxAttempts?: number; unhintedEdgeLimit?: number; ladder?: readonly (Rung | HintStrategy)[] } = {},
 ): BoxPleatResult {
   const fail = (reason: string, attempts = 0, lines: CPLine[] = [], problems: Pt[] = []): BoxPleatResult => ({ status: "incomplete", reason, lines, problems, attempts });
   for (const l of leaves(tree)) {
@@ -770,11 +773,10 @@ export function boxPleatFromGrid(
       if (!best || local.length < best.problems.length) best = { lines: done.lines, problems: local.map((v) => [v.coords[0] * n, v.coords[1] * n] as Pt), reason };
       continue;
     }
-    let r: FlatFoldResult = solveFlatFold(cp);
-    // The contour hint is Lang's approximation; without it the search is exact but
-    // slow on uniaxial bases (every face overlaps every other), so only small
-    // patterns get the unhinted retry.
-    if (!r.ok && cp.edges_vertices.length <= (opts.unhintedEdgeLimit ?? 200)) r = solveFlatFold(toFold(done.lines, n));
+    // The contour hint is Lang's approximation: flat-folder is exact but slow on
+    // uniaxial bases without it, so the ladder (design/mvhints.ts) falls back from
+    // a refuted hint to weaker ones, the unhinted rungs only on small patterns.
+    const { r, used } = solveGraded(done.lines, n, opts.ladder, { map: filled, unhintedEdgeLimit: opts.unhintedEdgeLimit });
     if (!r.ok) {
       const reason = `${tag}: flat-folder: ${r.reason}`;
       reasons.push(reason);
@@ -793,7 +795,7 @@ export function boxPleatFromGrid(
         expanded[name] = (expanded[name] ?? 0) + 1;
       }
     }
-    return { status: "verified", cp: r.cp, folded: r.folded, lines: done.lines, root: t.root, fills: t.fills, expanded, states: r.states.toString(), attempts };
+    return { status: "verified", cp: r.cp, folded: r.folded, lines: done.lines, root: t.root, fills: t.fills, expanded, states: r.states.toString(), attempts, hint: used };
   }
   const reason = best?.reason ?? reasons[0] ?? "no internal node to root the tree at";
   return fail(reasons.length > 1 ? `${reason} (${attempts} layout${attempts === 1 ? "" : "s"} tried)` : reason, attempts, best?.lines ?? [], best?.problems ?? []);
@@ -843,8 +845,10 @@ export function uniaxialDeviation(lines: readonly CPLine[], n: number, tips: rea
  * calls it an approximation — some middle-flap axials are valleys — so it is
  * only ever a hint to flat-folder, which proves or refutes it.
  */
-export function toFold(lines: readonly CPLine[], n: number, hint = false): FoldFile {
-  const L: [Pt, Pt, Assignment][] = lines.map((l) => [[l.a[0] / n, l.a[1] / n], [l.b[0] / n, l.b[1] / n], hint && l.role === "contour" ? (l.peak ? "V" : "M") : "U"]);
+export function toFold(lines: readonly CPLine[], n: number, hint: boolean | readonly Assignment[] = false): FoldFile {
+  // `hint` may also be one assignment per line (design/mvhints.ts builds these).
+  const asg = (l: CPLine, i: number): Assignment => (typeof hint === "boolean" ? (hint && l.role === "contour" ? (l.peak ? "V" : "M") : "U") : hint[i] ?? "U");
+  const L: [Pt, Pt, Assignment][] = lines.map((l, i) => [[l.a[0] / n, l.a[1] / n], [l.b[0] / n, l.b[1] / n], asg(l, i)]);
   L.push([[0, 0], [1, 0], "B"], [[1, 0], [1, 1], "B"], [[1, 1], [0, 1], "B"], [[0, 1], [0, 0], "B"]);
   return foldFromLines(L);
 }
