@@ -541,3 +541,52 @@ fish on 8×8 leaves 53 of 64 squares unused, absorbed into one flap);
 integer-aware packing and inflating short edges (Lang §13.2) would fix it.
 Level shifters (§14.1), Pythagorean stretches (§14.4) and the plan-view
 midline axial are not implemented.
+
+## 2026-10-11 — Integer-aware packing (design/packing.ts `packTreeInteger`)
+
+Source: Lang, ODS 2nd ed. §13.2–13.3. **Decision.** Edge lengths are whole
+grid squares chosen together with tip placement: scan the rounding bands of
+`round(s·length)` from 2·s* down to 0.75·s*, place the integer tree at scale 1,
+take the first feasible band (`target_scale` = its lower end). Then edges that
+were rounded down grow one square at a time, at most to ceil(target·length),
+while the L∞ condition holds (mirror pairs together). Every length that differs
+from target·length is listed in the candidate notes. `completeCandidate` builds
+from the integer tree and retries the old real-valued layout if that fails,
+saying which it used. Candidate ranking uses the realised scale.
+**Result.** Unused squares: bird 8 29→15, dragon 16 43→20, eiffel 8 31→24,
+insect 8 10→4. The fish 8×8 stays at 39: head, tail and dorsal on the diagonal
+force T+H+D+min(T,H,D) ≤ 8, a layout limit, not a rounding one (the 53 in the
+previous entry was the pure floor; gridTree already rounded up where it could).
+**Open.** Asymmetric packing (`symmetry: "none"`) would give the fish scale 2.5
+vs 1.74, but candidates try only diagonal and book; that needs its own decision.
+
+## 2026-10-11 — Contour parity is an invariant; level shifters deferred
+
+**Decision.** With integer tips, lengths and cells, every ridge between
+perpendicular faces runs at 45° through an integer point, so the contour graph
+is bipartite (colour 2u mod 2, tips colour 0): breadth-first elevations step by
+exactly ½ and every contour has elevation − u ∈ ℤ. Checked on 3,687 layouts
+(planner sweep) and in `design/contours.test.ts` (304 library + 283 random).
+A parity Conflict is therefore an internal error ("input off the grid"), no
+longer reported as "needs a level shifter". **Why not build the gadget.** Lang's
+level shifter (ODS Fig 14.5, p. 629) moves a contour by a whole unit, which
+preserves parity, so it could not fix such a clash anyway. Level shifters are
+needed only once forced axials other than tips exist (plan-view midline, §14.1
+Fig 14.2) or widening (§14.2); they wait for the midline axial. With odd n the
+midline lies on a half-integer line: a genuine clash, to be reported.
+
+## 2026-10-11 — Step-cost model: phase-wise fit, leave-one-out, gated by corpus size
+
+**Decision.** Three independent least-squares fits on per-panel phase
+annotations: precrease = a·log2 N + b (grid models), collapse = base + c1·F,
+shaping = c2·S (`design/costmodel.ts`). Only `published: true` corpus records
+(`sequencer/corpus.ts` schema) count toward the 20 and the fit; our own plans
+validate as records but never count. The M2 exit test is leave-one-out error
+within ±15% on ≥ 20 published sequences; in-sample error is shown, labelled
+optimistic. `design/estimate.ts` uses fitted collapse/shaping constants only
+when `design/fitted.ts` holds a fit on ≥ 12 published sequences; precrease
+stays the planner's exact count (the estimate predicts our plan, the fit
+predicts published ones). **Corpus is human work**: an agent does not
+transcribe panel counts (miscounts would poison the ground truth).
+**Reverse if** LOO fails while in-sample passes (overfitting): add batch kinds
+before adding parameters.
