@@ -65,3 +65,5 @@ app/         pipeline, CLI, instruction book, video recorder
 vendor/      flat-folder solver (unmodified) and the BP Studio core bundle;
              never edit, rebuild/copy from the pinned commit (see each README)
 ```
+
+@AGENTS.md

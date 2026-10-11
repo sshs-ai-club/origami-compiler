@@ -9,10 +9,10 @@
 
 import type { FoldFile } from "../engine/foldfile.ts";
 import type { DesignSpec } from "../intent/spec.ts";
-import { type BoxPleatResult, boxPleatFromGrid } from "./boxpleat.ts";
+import { type BoxPleatResult, boxPleatFromGrid, gridTree } from "./boxpleat.ts";
 import { type StepEstimate, estimateSteps } from "./estimate.ts";
 import { precreaseBase } from "../sequencer/precrease.ts";
-import { type Packing, type Symmetry, packTree } from "./packing.ts";
+import { type IntegerPacking, type Packing, type Symmetry, edgeLabel, packTree, packTreeInteger, withLengths } from "./packing.ts";
 import { type Route, route } from "./router.ts";
 import { type FlapTree, type ShapingOp, leaves } from "./tree.ts";
 
@@ -25,6 +25,8 @@ export interface Candidate {
   flaps: number;
   tree: FlapTree;
   packing: Packing;
+  /** Whole-square edge lengths (aligned with tree.edges) the packing was built from; absent for a real-valued packing. */
+  lengths?: number[];
   /** Box-pleat completion (design/boxpleat.ts); null until completeCandidate runs. */
   completion: BoxPleatResult | null;
   /** The flat-folder-verified crease pattern, or null. */
@@ -70,18 +72,29 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
         rejected.push({ id, reason: `estimated ${est.total} steps > budget ${budget!.max}${budget!.approximate ? " (+10% for 'about')" : ""}` });
         continue;
       }
-      let best: Packing | null = null;
+      let best: IntegerPacking | null = null;
       for (const sym of SYMMETRIES) {
-        const p = packTree(tree, N, sym);
+        const p = packTreeInteger(tree, N, sym);
         if (p && (!best || p.scale > best.scale)) best = p;
       }
+      // No integer layout (e.g. a flap under one square): fall back to the real-valued packing.
+      let legacy: Packing | null = null;
       if (!best) {
+        for (const sym of SYMMETRIES) {
+          const p = packTree(tree, N, sym);
+          if (p && (!legacy || p.scale > legacy.scale)) legacy = p;
+        }
+      }
+      if (!best && !legacy) {
         rejected.push({ id, reason: `no symmetric grid packing on ${N}×${N}` });
         continue;
       }
+      const packing: Packing = (best ?? legacy)!;
       const notes: string[] = [];
-      if (best.budget_hit) notes.push("packing search hit its node budget; a slightly larger scale may exist");
-      if (best.scale < 1) notes.push(`flaps are under one grid square per tree unit (scale ${best.scale.toFixed(2)}): too fine to fold on ${N}×${N}`);
+      if (best) notes.push(...roundingNotes(best.rounded, best.inflated, best.target_scale));
+      else notes.push("no whole-square layout found; using the real-valued packing, whose lengths are rounded when the crease pattern is built");
+      if (packing.budget_hit) notes.push("packing search hit its node budget; a slightly larger scale may exist");
+      if (packing.scale < 1) notes.push(`flaps are under one grid square per tree unit (scale ${packing.scale.toFixed(2)}): too fine to fold on ${N}×${N}`);
       if (budget && est.total > budget.max) notes.push(`${est.total} is slightly over ${budget.max}, allowed because the budget was approximate`);
       const size = spec.sheet.size_cm;
       found.push({ rank, c: {
@@ -92,7 +105,8 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
         variant: tree.variant,
         flaps: leaves(tree).length,
         tree,
-        packing: best,
+        packing,
+        lengths: best?.lengths,
         completion: null,
         base_cp: null,
         cp_status: "not completed yet",
@@ -100,7 +114,7 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
         est_steps: est,
         paper_spec: { size_cm: size, grid_n: N, sheet: "square", grid_square_cm: size ? Math.round((size / N) * 100) / 100 : null },
         within_budget: within,
-        confidence: best.scale >= 1 ? 0.3 : 0.1,
+        confidence: packing.scale >= 1 ? 0.3 : 0.1,
         notes,
       } });
     }
@@ -109,7 +123,7 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
   // Requested detail level first, then paper efficiency: flap length as a fraction of the
   // sheet (scale / N; scale alone grows with N). Within 2%, the coarser grid wins —
   // bigger squares, fewer steps, same model.
-  const eff = (c: Candidate) => c.packing.scale / c.paper_spec.grid_n;
+  const eff = (c: Candidate) => realisedScale(c.tree, c.lengths, c.packing) / c.paper_spec.grid_n;
   found.sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
     const ea = eff(a.c), eb = eff(b.c);
@@ -125,16 +139,47 @@ export function generateCandidates(spec: DesignSpec, trees: FlapTree[], maxCandi
  * all of it in flat-folder's layer search.
  */
 export function completeCandidate(c: Candidate, opts: { maxAttempts?: number; stepLimit?: number } = {}): Candidate {
-  const r = boxPleatFromGrid(c.tree, c.packing.positions, c.packing.grid_n, c.packing.scale, { maxAttempts: opts.maxAttempts });
-  if (r.status !== "verified") return { ...c, completion: r, base_cp: null, cp_status: `incomplete: ${r.reason}`, confidence: Math.min(c.confidence, 0.2) };
-  const notes = [...c.notes];
+  const n = c.packing.grid_n;
+  let packing = c.packing;
+  let lengths = c.lengths;
+  let notes = [...c.notes];
+  let r: BoxPleatResult;
+  if (lengths) {
+    // Whole-square layout first: the tree already has integer lengths, so scale 1 changes nothing.
+    r = boxPleatFromGrid(withLengths(c.tree, lengths), packing.positions, n, 1, { maxAttempts: opts.maxAttempts });
+    if (r.status !== "verified") {
+      // Retry with the legacy layout (real-valued packing, lengths rounded at its scale).
+      const legacy = packTree(c.tree, n, packing.symmetry);
+      const why = r.reason;
+      if (legacy) {
+        const r2 = boxPleatFromGrid(c.tree, legacy.positions, n, legacy.scale, { maxAttempts: opts.maxAttempts });
+        if (r2.status === "verified") {
+          r = r2;
+          packing = legacy;
+          lengths = undefined;
+          const g = gridTree(c.tree, legacy.scale, legacy.positions);
+          notes = notes.filter((x) => !x.startsWith(ROUNDING_PREFIX));
+          notes.push(`whole-square layout did not complete (${why}); legacy layout used`);
+          if (typeof g !== "string") {
+            const changes = g.edges.map((e, i) => ({ edge: edgeLabel(c.tree, i), target: c.tree.edges[i]!.length * legacy.scale, length: e.length })).filter((x) => Math.abs(x.length - x.target) > 1e-6);
+            notes.push(...roundingNotes(changes, [], legacy.scale));
+          }
+        } else notes.push(`whole-square layout did not complete (${why}); legacy layout did not either (${r2.reason})`);
+      } else notes.push(`whole-square layout did not complete (${why}); no legacy layout exists`);
+    } else notes.push("layout: whole-square edge lengths chosen together with the tip placement");
+  } else {
+    r = boxPleatFromGrid(c.tree, packing.positions, n, packing.scale, { maxAttempts: opts.maxAttempts });
+  }
+  if (r.status !== "verified") return { ...c, packing, lengths, notes, completion: r, base_cp: null, cp_status: `incomplete: ${r.reason}`, confidence: Math.min(c.confidence, 0.2) };
   const grown = Object.entries(r.expanded);
   if (grown.length) notes.push(`unused paper absorbed into ${grown.map(([f, k]) => `${f} (+${k} squares)`).join(", ")}: those flaps get extra layers, not extra length`);
   // With the base known, precreasing is exact: grid, half-grid lines, diagonals.
-  const precrease = precreaseBase(c.packing.grid_n, r.lines).steps.length;
+  const precrease = precreaseBase(n, r.lines).steps.length;
   const est_steps = { ...c.est_steps, precrease, total: c.est_steps.total - c.est_steps.precrease + precrease };
   return {
     ...c,
+    packing,
+    lengths,
     est_steps,
     within_budget: opts.stepLimit === undefined ? c.within_budget : est_steps.total <= opts.stepLimit,
     completion: r,
@@ -143,6 +188,25 @@ export function completeCandidate(c: Candidate, opts: { maxAttempts?: number; st
     confidence: 0.6,
     notes,
   };
+}
+
+/**
+ * Grid squares per tree unit actually achieved: whole-square edge length over tree length,
+ * summed. (An integer packing's target scale is the low end of its rounding band, which
+ * would penalise a layout like the crane's, where 7.5 rounds up to exactly 8.)
+ */
+function realisedScale(tree: FlapTree, lengths: number[] | undefined, packing: Packing): number {
+  if (!lengths) return packing.scale;
+  return lengths.reduce((s, l) => s + l, 0) / tree.edges.reduce((s, e) => s + e.length, 0);
+}
+
+const ROUNDING_PREFIX ="edge lengths rounded";
+
+/** One note naming every edge whose whole-square length differs from the ideal (never a silent change). */
+function roundingNotes(rounded: { edge: string; target: number; length: number }[], inflated: string[], scale: number): string[] {
+  if (!rounded.length) return [];
+  const parts = rounded.map((x) => `${x.edge} ${x.length} (asked ${x.target.toFixed(2)} at scale ${scale.toFixed(2)}${inflated.includes(x.edge) ? ", inflated into spare paper" : ""})`);
+  return [`${ROUNDING_PREFIX} to whole grid squares: ${parts.join(", ")}`];
 }
 
 /** The step budget as a hard limit: "about N" tolerates 10%, "under N" does not. */
