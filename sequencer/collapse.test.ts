@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Assignment, FoldFile } from "../engine/foldfile.ts";
 import { boxPleatFromGrid } from "../design/boxpleat.ts";
 import type { FlapTree } from "../design/tree.ts";
-import { type CollapseStage, creaseLines, findCollapse, groupsOfBoxPleat, isChain, verifyStage } from "./collapse.ts";
+import { type CollapseStage, closeStage, creaseLines, findCollapse, fineGroupsOfBoxPleat, groupsOfBoxPleat, isChain, verifyStage } from "./collapse.ts";
 
 // Lang 6x6 fixture, copied from design/boxpleat.test.ts.
 const SIX: FlapTree = {
@@ -174,6 +174,72 @@ describe("findCollapse", () => {
       expect(verifyStage(r.cp, res.stoppedAt.creases).ok).toBe(true);
     }
   }, 60_000);
+});
+
+describe("closeStage", () => {
+  const all = new Set([E, N, W, S]);
+  it("{E,N} closes to all four; {N,S} stays; {} stays", () => {
+    expect([...closeStage(CROSS, new Set([E, N]), all)!].sort((a, b) => a - b)).toEqual([E, N, W, S]);
+    expect([...closeStage(CROSS, new Set([N, S]), all)!].sort((a, b) => a - b)).toEqual([N, S]);
+    expect(closeStage(CROSS, new Set(), all)!.size).toBe(0);
+  });
+  it("is a superset of the input, a subset of `all`, and its result verifies", () => {
+    for (const sub of [[E], [N], [E, W], [E, N, W], [N, S], [E, N, W, S]]) {
+      const c = closeStage(CROSS, new Set(sub), all);
+      expect(c).not.toBeNull();
+      for (const e of sub) expect(c!.has(e)).toBe(true);
+      for (const e of c!) expect(all.has(e)).toBe(true);
+      expect(verifyStage(CROSS, [...c!]).ok).toBe(true);
+    }
+  });
+  it("returns null when `all` cannot repair the vertex, or the input is outside `all`", () => {
+    expect(closeStage(CROSS, new Set([E]), new Set([E, N]))).toBeNull();
+    expect(closeStage(CROSS, new Set([E, W]), new Set([E, N]))).toBeNull();
+  });
+  // Case (c) (a 4x4 grid with a perpendicular crease) is skipped: a full-width
+  // crossing of collinear creases gives 2:2 M/V at the vertex, which violates
+  // Maekawa, so no hand-checkable flat-foldable fixture of that shape exists.
+});
+
+describe("fineGroupsOfBoxPleat + closeUnions on Lang 6x6", () => {
+  it("result is independently valid (ok:true chain or ok:false verified stoppedAt)", () => {
+    const r = boxPleatFromGrid(SIX, SIX_TIPS, 6);
+    expect(r.status).toBe("verified");
+    if (r.status !== "verified") return;
+    const groups = fineGroupsOfBoxPleat(r, 6);
+    const res = findCollapse(r.cp, groups, { closeUnions: true });
+    const all = r.cp.edges_assignment!.flatMap((a, i) => (a === "M" || a === "V" ? [i] : []));
+    // diagnostic: closure size of each single line (null = cannot close)
+    const lm = creaseLines(r.cp, r.lines, 6);
+    const allSet = new Set(all);
+    const per = r.lines.map((_, k) => {
+      const es = [...lm].filter(([, ls]) => ls[0] === k).map(([e]) => e);
+      const c = closeStage(r.cp, new Set(es), allSet);
+      return c ? `${es.length}->${c.size}` : `${es.length}->null`;
+    });
+    console.info("SIX per-line closure (own->closed):", per.join(" "));
+    console.info(
+      "SIX fine collapse:",
+      res.ok ? `ok, ${res.stages.length} stages, sizes ${res.stages.map((s) => s.creases.length).join("/")}` : `not ok: ${res.reason}; stoppedAt ${res.stoppedAt ? res.stoppedAt.creases.length + " creases" : "null"}`,
+      "of",
+      all.length,
+      "creases; groups",
+      groups.length,
+      groups.map((g) => g.edges.length).join("/"),
+      "stats",
+      JSON.stringify(res.stats),
+    );
+    for (const g of groups) expect(g.edges.length).toBeLessThan(all.length);
+    if (res.ok) {
+      expect(res.stages.length).toBeGreaterThanOrEqual(2);
+      expect(isChain(res.stages)).toBe(true);
+      expect(res.stages[res.stages.length - 1]!.creases).toEqual(all);
+      for (const s of res.stages) expect(verifyStage(r.cp, s.creases).ok).toBe(true);
+      for (let i = 1; i < res.stages.length; i++) expect(res.stages[i]!.creases.length).toBeGreaterThan(res.stages[i - 1]!.creases.length);
+    } else if (res.stoppedAt) {
+      expect(verifyStage(r.cp, res.stoppedAt.creases).ok).toBe(true);
+    }
+  }, 85_000);
 });
 
 describe("isChain", () => {

@@ -12,6 +12,7 @@
 
 import type { Assignment, FoldFile } from "../engine/foldfile.ts";
 import { solveFlatFold } from "../engine/flatfold.ts";
+import { localFlatFoldability } from "../engine/local.ts";
 import { beamSearch, type Domain } from "./search.ts";
 
 export type StageVerdict = { ok: true; states: bigint } | { ok: false; stage: string; reason: string };
@@ -113,6 +114,12 @@ export interface CollapseOptions {
   exhaustiveLimit?: number;
   beamWidth?: number;
   nodeLimit?: number;
+  /**
+   * When adding a group to a stage, use closeStage(stage ∪ group) as the new
+   * stage (locally flat closure). Unions whose closure fails are skipped.
+   * Default false.
+   */
+  closeUnions?: boolean;
 }
 
 const isCrease = (a: Assignment | undefined) => a === "M" || a === "V";
@@ -197,6 +204,67 @@ export function groupsOfBoxPleat(r: { cp: FoldFile; lines: readonly (SegLike & {
 const keyOf = (s: ReadonlySet<number>) => [...s].sort((a, b) => a - b).join(",");
 
 /**
+ * Local-flatness closure of a crease set.
+ *
+ * Rule: restrict `cp` to its border plus the current set (every other crease
+ * flat). Ask engine/local.ts `localFlatFoldability` for the interior vertices
+ * where Kawasaki or Maekawa fails. At EACH such vertex add ALL creases of `all`
+ * incident to it that are not yet in the set (no partial choice). Repeat until
+ * no vertex fails. Returns null if (a) `edges` is not a subset of `all`, or
+ * (b) a failing vertex has no incident crease of `all` left to add (so more
+ * creases cannot fix it from this side). Terminates because the set only
+ * grows inside `all`. The result is a superset of `edges`, a subset of `all`,
+ * and locally flat-foldable at every interior vertex; it may be `all` itself.
+ * Local flatness is NECESSARY for a stage; connectivity and global
+ * flat-foldability are still decided by verifyStage.
+ */
+export function closeStage(cp: FoldFile, edges: ReadonlySet<number>, all: ReadonlySet<number>): Set<number> | null {
+  for (const e of edges) if (!all.has(e)) return null;
+  const cur = new Set(edges);
+  const asg = cp.edges_assignment ?? cp.edges_vertices.map((): Assignment => "U");
+  const at = new Map<number, number[]>(); // vertex -> creases of `all` incident
+  for (const e of all) for (const v of cp.edges_vertices[e]!) at.set(v, [...(at.get(v) ?? []), e]);
+  for (;;) {
+    const masked = asg.map((a, i): Assignment => (a === "B" ? "B" : cur.has(i) ? a : "F"));
+    const bad = localFlatFoldability({ ...cp, edges_assignment: masked, edges_foldAngle: undefined });
+    if (bad.length === 0) return cur;
+    let grew = false;
+    for (const b of bad) {
+      for (const e of at.get(b.vertex) ?? []) {
+        if (!cur.has(e)) {
+          cur.add(e);
+          grew = true;
+        }
+      }
+    }
+    if (!grew) return null;
+  }
+}
+
+/**
+ * One candidate per CPLine of a verified box-pleat result: the cp edges of that
+ * line, passed through `closeStage`. Lines whose closure fails, duplicates and
+ * closures equal to the full crease set are dropped. Ordered by line index.
+ */
+export function fineGroupsOfBoxPleat(r: { cp: FoldFile; lines: readonly SegLike[] }, n: number): CreaseGroup[] {
+  const map = creaseLines(r.cp, r.lines, n);
+  const all = new Set(map.keys());
+  const byLine = new Map<number, number[]>();
+  for (const [e, ls] of map) if (ls.length > 0) byLine.set(ls[0]!, [...(byLine.get(ls[0]!) ?? []), e]);
+  const out: CreaseGroup[] = [];
+  const seen = new Set<string>();
+  for (const k of [...byLine.keys()].sort((a, b) => a - b)) {
+    const c = closeStage(r.cp, new Set(byLine.get(k)!), all);
+    if (!c || c.size === all.size) continue;
+    const key = keyOf(c);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label: `line${k}`, edges: [...c].sort((a, b) => a - b) });
+  }
+  return out;
+}
+
+/**
  * Find nested stages S1 < S2 < ... < Sk = all M/V creases of `cp`, each a union
  * of candidate `groups` and each flat-foldable (verifyStage). Prefers the chain
  * with the most stages found. NECESSARY condition only: motion between stages
@@ -239,6 +307,10 @@ export function findCollapse(cp: FoldFile, groups: readonly CreaseGroup[], opts:
     cache.set(k, v);
     return v;
   };
+  const combine = (cur: ReadonlySet<number>, g: ReadonlySet<number>): Set<number> | null => {
+    const u = new Set([...cur, ...g]);
+    return opts.closeUnions ? closeStage(cp, u, all) : u;
+  };
   const stats = (): CollapseStats => ({ search, groups: cand.length, verifyCalls: calls, cacheHits: hits, elapsedMs: Date.now() - t0, complete: !aborted });
   const stage = (s: ReadonlySet<number>): CollapseStage => ({ creases: [...s].sort((a, b) => a - b), verdict: cache.get(keyOf(s))! });
   const stoppedAt = (): CollapseStage | null => {
@@ -266,8 +338,8 @@ export function findCollapse(cp: FoldFile, groups: readonly CreaseGroup[], opts:
       if (m) return m;
       let bestSeq: Set<number>[] = [];
       for (const g of cand) {
-        const u = new Set([...cur, ...g]);
-        if (u.size === cur.size) continue;
+        const u = combine(cur, g);
+        if (!u || u.size === cur.size) continue;
         const v = verify(u);
         if (!v) break;
         if (!v.ok) continue;
@@ -290,8 +362,8 @@ export function findCollapse(cp: FoldFile, groups: readonly CreaseGroup[], opts:
         initial: () => ({ e: new Set(), key: "" }),
         expand: (s) => (s.e.size > 0 && (jumpAnywhere || fine.every((g) => [...g].every((e) => s.e.has(e)))) ? cand : fine),
         apply: (s, g) => {
-          const u = new Set([...s.e, ...g]);
-          if (u.size === s.e.size) return null;
+          const u = combine(s.e, g);
+          if (!u || u.size === s.e.size) return null;
           const v = verify(u);
           return v && v.ok ? { e: u, key: keyOf(u) } : null;
         },
@@ -305,7 +377,7 @@ export function findCollapse(cp: FoldFile, groups: readonly CreaseGroup[], opts:
       const seq: Set<number>[] = [];
       let cur = new Set<number>();
       for (const g of r.ops) {
-        cur = new Set([...cur, ...g]);
+        cur = combine(cur, g)!;
         seq.push(cur);
       }
       return seq;
