@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Assignment, FoldFile } from "../engine/foldfile.ts";
 import { boxPleatFromGrid } from "../design/boxpleat.ts";
 import type { FlapTree } from "../design/tree.ts";
-import { type CollapseStage, isChain, verifyStage } from "./collapse.ts";
+import { type CollapseStage, creaseLines, findCollapse, groupsOfBoxPleat, isChain, verifyStage } from "./collapse.ts";
 
 // Lang 6x6 fixture, copied from design/boxpleat.test.ts.
 const SIX: FlapTree = {
@@ -80,6 +80,100 @@ describe("verifyStage", () => {
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.reason.length).toBeGreaterThan(0);
   });
+});
+
+/**
+ * 4x4 square with three full-width parallel creases y=1 (M), y=2 (V), y=3 (M).
+ * Hand check: no interior vertex (every crease ends on the border), so Maekawa
+ * and Kawasaki do not apply; an alternating accordion M,V,M is flat-foldable
+ * with 4 layers, and so is every subset of it (each crease is a full fold line).
+ * Edges 10, 11, 12 are the creases.
+ */
+const PLEATS: FoldFile = {
+  file_spec: 1.2,
+  file_creator: "test",
+  vertices_coords: [[0, 0], [4, 0], [4, 4], [0, 4], [0, 1], [0, 2], [0, 3], [4, 1], [4, 2], [4, 3]],
+  edges_vertices: [[0, 4], [4, 5], [5, 6], [6, 3], [1, 7], [7, 8], [8, 9], [9, 2], [0, 1], [3, 2], [4, 7], [5, 8], [6, 9]],
+  edges_assignment: ["B", "B", "B", "B", "B", "B", "B", "B", "B", "B", "M", "V", "M"] as Assignment[],
+};
+
+describe("findCollapse", () => {
+  it("three independent full-width pleats: a 3-stage chain is found", () => {
+    const res = findCollapse(PLEATS, [
+      { label: "y1", edges: [10] },
+      { label: "y2", edges: [11] },
+      { label: "y3", edges: [12] },
+    ]);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.stages.length).toBe(3);
+    expect(res.stages.map((s) => s.creases.length)).toEqual([1, 2, 3]);
+    expect(isChain(res.stages)).toBe(true);
+    expect(res.stages[2]!.creases).toEqual([10, 11, 12]);
+    expect(res.stats.search).toBe("exhaustive");
+    expect(res.stats.complete).toBe(true);
+  });
+
+  it("only the full set as a group: reported as one-shot, not success", () => {
+    const res = findCollapse(PLEATS, []);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe("only the one-shot collapse verifies");
+  });
+
+  it("a budget of 1 check stops with a budget reason", () => {
+    const res = findCollapse(PLEATS, [{ label: "y1", edges: [10] }, { label: "y2", edges: [11] }], { maxChecks: 1 });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toMatch(/^budget exhausted after 1 stage checks/);
+  });
+
+  it("many groups switch to beam search and still return a valid chain", () => {
+    const res = findCollapse(PLEATS, [{ label: "y1", edges: [10] }, { label: "y2", edges: [11] }, { label: "y3", edges: [12] }], { exhaustiveLimit: 2 });
+    expect(res.stats.search).toBe("beam");
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(isChain(res.stages)).toBe(true);
+  });
+
+  it("Lang 6x6: cp edge to line mapping is one-to-one per M/V edge, counts match r.lines", () => {
+    const r = boxPleatFromGrid(SIX, SIX_TIPS, 6);
+    expect(r.status).toBe("verified");
+    if (r.status !== "verified") return;
+    const map = creaseLines(r.cp, r.lines, 6);
+    const asg = r.cp.edges_assignment!;
+    expect(map.size).toBe(asg.filter((a) => a === "M" || a === "V").length);
+    for (const ls of map.values()) expect(ls.length).toBe(1);
+    // every line owns at least one cp edge; per-role line counts match
+    const used = new Set([...map.values()].map((l) => l[0]!));
+    expect(used.size).toBe(r.lines.length);
+    for (const role of ["hinge", "ridge", "contour"] as const) {
+      expect(new Set([...map.values()].map((l) => l[0]!).filter((k) => r.lines[k]!.role === role)).size).toBe(r.lines.filter((l) => l.role === role).length);
+    }
+  });
+
+  it("Lang 6x6: result is independently valid (ok:true chain or ok:false verified stoppedAt)", () => {
+    const r = boxPleatFromGrid(SIX, SIX_TIPS, 6);
+    expect(r.status).toBe("verified");
+    if (r.status !== "verified") return;
+    const groups = groupsOfBoxPleat(r, 6);
+    const res = findCollapse(r.cp, groups);
+    const all = r.cp.edges_assignment!.flatMap((a, i) => (a === "M" || a === "V" ? [i] : []));
+    console.info(
+      "SIX collapse:",
+      res.ok ? `ok, ${res.stages.length} stages, sizes ${res.stages.map((s) => s.creases.length).join("/")}` : `not ok: ${res.reason}; stoppedAt ${res.stoppedAt ? res.stoppedAt.creases.length + " creases" : "null"}`,
+      "groups",
+      groups.map((g) => `${g.label}:${g.edges.length}`).join(" "),
+      "stats",
+      JSON.stringify(res.stats),
+    );
+    if (res.ok) {
+      expect(res.stages.length).toBeGreaterThanOrEqual(2);
+      expect(isChain(res.stages)).toBe(true);
+      expect(res.stages[res.stages.length - 1]!.creases).toEqual(all);
+      for (const s of res.stages) expect(verifyStage(r.cp, s.creases).ok).toBe(true);
+      for (let i = 1; i < res.stages.length; i++) expect(res.stages[i]!.creases.length).toBeGreaterThan(res.stages[i - 1]!.creases.length);
+    } else if (res.stoppedAt) {
+      expect(verifyStage(r.cp, res.stoppedAt.creases).ok).toBe(true);
+    }
+  }, 60_000);
 });
 
 describe("isChain", () => {
