@@ -3,7 +3,7 @@
 ## To do
 - [x] `claude/design-open-items` merged to main (PR #12); agent worktrees and merged branches removed (2026-10-20)
 - [ ] **M4a collapse feasibility spike** (branch `claude/collapse-sequence`, autopilot run, see RUN.md and "Graph: M4a" below)
-  - [ ] P1 contract + fixtures + `verifyStage`
+  - [x] P1 contract + fixtures + `verifyStage` (f2d09a1; stages must be connected crease sets)
   - [ ] P2 stage search on SIX
   - [ ] P3 result report, decisions.md entry, final gate
 - [ ] Re-run `npx tsx app/hintbench.ts --slow` with the edge-level "one" (old --slow rows are stale)

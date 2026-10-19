@@ -33,13 +33,15 @@ P1 contract + fixtures + `verifyStage`; P2 stage search; P3 result report, decis
 2026-10-20, branch `claude/collapse-sequence`, baseline `npm run check` green (126 tests).
 
 ## Progress log
-- 2026-10-20 charter written.
+- 2026-10-20 charter written (72f437d).
+- 2026-10-20 P1 gate passed: n1 (sonnet) attempt 2/3 by its count; I read the diff, copied into main, `scripts/check.sh` green (135 tests), committed f2d09a1. Worktree cut from `main` (cf4c588), not from the branch: the Agent tool's worktree base is main, so briefs for later nodes must say `git merge claude/collapse-sequence` first.
+- Finding from n1: flat-folder rejects a stage whose creases are not connected to the border or to other folded creases ("not connected"). Stages must therefore be connected crease sets; P2 search must respect this.
 
 ## Caps used
-spawns: 1 (explorer, pre-run survey, not counted against the run) / 12 · phases: 0 / 3 · hours: ~0 / 4 · tokens: unmeasured (estimate low) / 3M
+spawns: 1 (n1) / 12 (+1 pre-run explorer not counted) · phases: 1 / 3 · hours: ~0 / 4 · tokens: unmeasured (estimate low) / 3M
 
 ## Compaction hand-off
-State: charter just committed; next is P1 dispatch. Reread RUN.md, PLAN.md, NEXT.md. Compaction path: none granted; if context fills, end at the gate with the recap (resumable).
+State: P1 done and committed (f2d09a1); next is P2 dispatch (n2, standard plan in the brief). Reread RUN.md, PLAN.md, NEXT.md. Compaction path: none granted; if context fills, end at the gate with the recap (resumable).
 
 ## Retrospective
 (filled at the end)
