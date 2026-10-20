@@ -628,8 +628,9 @@ hand-made 4×4 with three parallel full-width creases (M, V, M) does give a
 the closure rule is crude (adds all incident creases), and seeds were single
 lines. **Why the model itself is suspect.** Real collapses fold creases
 simultaneously and partially (angles between 0 and 180), so the intermediate
-states are not "some creases fully folded, the rest flat". Lang §14.9 says the
-same of most box-pleated bases. Further subset search is unlikely to pay.
+states are not "some creases fully folded, the rest flat". Lang §14.9 is
+cited in the repo as saying most box-pleated bases have no step-by-step
+collapse (unverified here: the book is local and gitignored). Further subset search is unlikely to pay.
 **Next (not started).** Either a minimal-closure rule and larger seeds
 (flap, hinge+ridge pair) as a cheap last try on this model, or a model with
 per-crease fold progress (rigid-folding / Origami Simulator-style, a visual

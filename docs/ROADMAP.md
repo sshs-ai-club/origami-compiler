@@ -20,7 +20,7 @@ What is missing, in the order a folder would hit it:
 
 | Gap | What exists instead | Where it belongs |
 |---|---|---|
-| **Step-by-step collapse sequence** | One panel: "collapse along these creases" + verified end state. M4a spike (`sequencer/collapse.ts`, 2026-10-20): stages as nested crease subsets verify one by one, but on Lang 6×6 no staged chain exists in the candidate set (decisions 2026-10-20); the subset model probably cannot express simultaneous collapse | M4 (sequencer: non-simple operators, collapse search) |
+| **Step-by-step collapse sequence** | One panel: "collapse along these creases" + verified end state. M4a spike (`sequencer/collapse.ts`, 2026-10-20): stages as nested crease subsets can each be flat-folder-verified (a necessary condition only; motion between stages is not verified), but on Lang 6×6 no staged chain exists in the candidate set (decisions 2026-10-20); the subset model probably cannot express simultaneous collapse | M4 (sequencer: non-simple operators, collapse search) |
 | **Shaping sequence** (base → horse) | A step-count estimate only | M4/M5 (shaping library, ARCHITECTURE.md §2) |
 | **Verification of the final 3D shape** | Verification stops at the flat uniaxial base (tips, lengths, contours) | After shaping exists; Origami Simulator–style 3D preview is a visual aid, never the verdict |
 | **Subject-specific stick figures** ("good looking", mane, long neck) | Generic library figure (quadruped); "good looking" is ignored by the rule parser | `--claude` stick-figure proposals exist; style/proportion → figure mapping is open |

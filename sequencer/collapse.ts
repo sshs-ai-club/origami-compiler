@@ -17,6 +17,11 @@ import { beamSearch, type Domain } from "./search.ts";
 
 export type StageVerdict = { ok: true; states: bigint } | { ok: false; stage: string; reason: string };
 
+/**
+ * One stage of a collapse. `verdict.ok` means this crease subset is
+ * flat-foldable on its own (a NECESSARY condition); it says nothing about
+ * moving the paper from the previous stage to this one.
+ */
 export interface CollapseStage {
   /** Edge indices of the verified crease pattern that are folded in this stage. */
   creases: number[];
@@ -105,6 +110,11 @@ export interface CollapseStats {
  */
 export type CollapseResult =
   | { ok: true; stages: CollapseStage[]; stats: CollapseStats }
+  /**
+   * `stoppedAt` is the largest verified proper stage seen during the search. It
+   * need not lie on any chain. With `stats.complete === false` (budget abort)
+   * an `ok: true` chain is verified but not necessarily the longest.
+   */
   | { ok: false; stoppedAt: CollapseStage | null; reason: string; stats: CollapseStats };
 
 export interface CollapseOptions {

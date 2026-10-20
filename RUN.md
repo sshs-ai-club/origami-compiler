@@ -46,4 +46,9 @@ spawns: 1 (n1) / 12 (+1 pre-run explorer not counted) · phases: 1 / 3 · hours:
 State: P1 done and committed (f2d09a1); next is P2 dispatch (n2, standard plan in the brief). Reread RUN.md, PLAN.md, NEXT.md. Compaction path: none granted; if context fills, end at the gate with the recap (resumable).
 
 ## Retrospective
-(filled at the end)
+Finished 2026-10-20. Final gate: `scripts/check.sh` green (145 tests); fresh reviewer: ready, no blockers; its 1 major (SIX tests did not pin the negative result) and 4 minors (doc wording) fixed by the integrator.
+- Done without the user: all 3 phases; 3 worker spawns + 1 reviewer = 4 of 12 (plus the uncounted pre-run explorer). Hours well under 4; tokens not measured (estimate far under 3M).
+- Blocked autonomy: nothing blocked. Pre-flight caught untracked PLAN/check.sh (worktrees lacked them) and the missing RUN template.
+- Lessons: the Agent worktree is cut from `main`, not the working branch, so briefs must start with `git merge claude/collapse-sequence`; a worker's untracked files in its worktree block `git worktree remove` without force, so copy, commit, delete the copies, then remove. One full-suite run showed 3 unrelated timeouts-style failures (app, design, mvhints); they passed alone and on rerun. Cause unverified (likely machine load from a stalled background shell).
+- Next graph should: seed from flap or hinge+ridge pairs, or change the model (per-crease fold progress) before more subset search.
+- Compaction: none needed or used.

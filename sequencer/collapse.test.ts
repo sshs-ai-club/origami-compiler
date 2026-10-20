@@ -164,6 +164,11 @@ describe("findCollapse", () => {
       "stats",
       JSON.stringify(res.stats),
     );
+    // Pinned negative result (decisions 2026-10-20): 16 coarse groups plus the
+    // full set, none of the 16 verifies alone.
+    expect(groups.length).toBe(16);
+    expect(res.ok).toBe(false);
+    expect(res.ok ? null : res.stoppedAt).toBeNull();
     if (res.ok) {
       expect(res.stages.length).toBeGreaterThanOrEqual(2);
       expect(isChain(res.stages)).toBe(true);
@@ -230,6 +235,15 @@ describe("fineGroupsOfBoxPleat + closeUnions on Lang 6x6", () => {
       JSON.stringify(res.stats),
     );
     for (const g of groups) expect(g.edges.length).toBeLessThan(all.length);
+    // Pinned negative result (decisions 2026-10-20): 151 creases, 53 lines, and
+    // every single-line closure grows to the full pattern. If a better closure
+    // rule changes this, update the decision entry together with these numbers.
+    expect(all.length).toBe(151);
+    expect(r.lines.length).toBe(53);
+    expect(per.every((p) => p.endsWith("->151"))).toBe(true);
+    expect(groups.length).toBe(0);
+    expect(res.ok).toBe(false);
+    expect(res.ok ? null : res.stoppedAt).toBeNull();
     if (res.ok) {
       expect(res.stages.length).toBeGreaterThanOrEqual(2);
       expect(isChain(res.stages)).toBe(true);
