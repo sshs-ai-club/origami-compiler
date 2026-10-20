@@ -35,6 +35,8 @@ P1 contract + fixtures + `verifyStage`; P2 stage search; P3 result report, decis
 ## Progress log
 - 2026-10-20 charter written (72f437d).
 - 2026-10-20 P1 gate passed: n1 (sonnet) attempt 2/3 by its count; I read the diff, copied into main, `scripts/check.sh` green (135 tests), committed f2d09a1. Worktree cut from `main` (cf4c588), not from the branch: the Agent tool's worktree base is main, so briefs for later nodes must say `git merge claude/collapse-sequence` first.
+- 2026-10-20 P2 gate: n2 (a) and n2b (retry-style second pass, not a failure) merged after I read the diff and reran `scripts/check.sh` (141, then 145 tests green) and the SIX test output. Result negative on SIX (see decisions 2026-10-20). I chose NOT to spend a third spawn on minimal-closure seeds: the subset model itself is doubtful (simultaneous partial folding), recorded as the next choice for sunwoo.
+- 2026-10-20 P3: decision entry, README, ROADMAP, NEXT written by integrator.
 - Finding from n1: flat-folder rejects a stage whose creases are not connected to the border or to other folded creases ("not connected"). Stages must therefore be connected crease sets; P2 search must respect this.
 
 ## Caps used
