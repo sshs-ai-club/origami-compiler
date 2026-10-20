@@ -607,3 +607,33 @@ troughs on 4; every refutation took 10–35 ms; "one" and "none" never refuted.
 known to be always right. **Open:** flat-folder is synchronous, so the edge
 limit is not a time bound (bird 12 diagonal unhinted: 193 s); `--slow` rows
 need re-measuring with the edge-level "one".
+
+## 2026-10-20 — M4a: collapse stages as nested crease subsets (sequencer/collapse.ts); first result is negative
+
+**Decision.** A collapse is searched as a chain of crease subsets
+S1 ⊂ … ⊂ Sk = all, each stage checked by flat-folder with the other creases
+left flat (`verifyStage`); `findCollapse` returns verified stages or a named
+failure, and a one-stage result (what the pipeline already does) counts as
+failure. **Label.** Flat-foldability of each stage is a *necessary* condition;
+motion between stages is **not verified**. The engine's global stack rank is
+not used (decisions 2026-09-26).
+**Measured on Lang's 6×6 (SIX; 151 M/V creases, 53 lines).** (1) 16 candidate
+groups (role × elevation × connected component): none verifies alone, no
+chain. (2) One group per line, closed under "add every incident crease at a
+vertex that fails Kawasaki/Maekawa" (`closeStage`): all 53 closures grow to
+the full 151 creases, so no staged chain exists in the candidate set. A
+hand-made 4×4 with three parallel full-width creases (M, V, M) does give a
+3-stage chain, so the search works where an answer is known.
+**What this does not show.** It does not prove SIX has no staged collapse:
+the closure rule is crude (adds all incident creases), and seeds were single
+lines. **Why the model itself is suspect.** Real collapses fold creases
+simultaneously and partially (angles between 0 and 180), so the intermediate
+states are not "some creases fully folded, the rest flat". Lang §14.9 is
+cited in the repo as saying most box-pleated bases have no step-by-step
+collapse (unverified here: the book is local and gitignored). Further subset search is unlikely to pay.
+**Next (not started).** Either a minimal-closure rule and larger seeds
+(flap, hinge+ridge pair) as a cheap last try on this model, or a model with
+per-crease fold progress (rigid-folding / Origami Simulator-style, a visual
+aid never the verdict, ROADMAP).
+**Reverse if** a verified multi-stage chain is found on a real base: then
+extend the player (`OpKeyframe` has no collapse kind).
